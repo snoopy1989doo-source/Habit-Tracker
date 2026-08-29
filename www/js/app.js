@@ -88,6 +88,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Helper Functions
   function formatDateKey(dateObj) {
+    if (!dateObj) dateObj = new Date();
     const yyyy = dateObj.getFullYear();
     const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
     const dd = String(dateObj.getDate()).padStart(2, '0');
@@ -131,7 +132,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     db.tasks.forEach(t => {
       if (t.archived) return;
 
-      // Check last 7 past days
       for (let i = 1; i <= 7; i++) {
         const pastDate = new Date();
         pastDate.setDate(pastDate.getDate() - i);
@@ -142,7 +142,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           const isDone = t.completions && t.completions[pastKey];
 
           if (!isDone && !db.penaltiesProcessed[penaltyKey]) {
-            // Apply 100% penalty
             const points = t.points || 10;
             db.pointsBalance = Math.max(0, (db.pointsBalance || 0) - points);
             db.penaltiesProcessed[penaltyKey] = true;
@@ -279,7 +278,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   function isTaskDueOnDate(task, dateObj) {
     if (task.archived) return false;
     const dateStr = formatDateKey(dateObj);
-    const createdStr = task.createdAt ? task.createdAt.split('T')[0] : '2026-01-01';
+    
+    // Get created date string in LOCAL time consistently
+    let createdStr = task.createdAtKey;
+    if (!createdStr && task.createdAt) {
+      createdStr = formatDateKey(new Date(task.createdAt));
+    }
+    if (!createdStr) createdStr = formatDateKey(new Date());
 
     if (dateStr < createdStr) return false;
 
@@ -437,7 +442,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const closeTaskModalBtn = document.getElementById('closeTaskModalBtn');
   const cancelTaskBtn = document.getElementById('cancelTaskBtn');
 
-  if (addTaskFab) addTaskFab.addEventListener('click', openAddTaskModal);
+  if (addTaskFab) {
+    addTaskFab.addEventListener('click', openAddTaskModal);
+    addTaskFab.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      openAddTaskModal();
+    });
+  }
+
   if (closeTaskModalBtn) closeTaskModalBtn.addEventListener('click', closeTaskModal);
   if (cancelTaskBtn) cancelTaskBtn.addEventListener('click', closeTaskModal);
 
@@ -464,12 +476,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('taskId').value = '';
     document.getElementById('taskTitle').value = '';
     document.getElementById('taskPoints').value = 10;
+    
+    // Auto-select active category filter if specific
+    if (activeCategoryFilter !== 'all') {
+      document.getElementById('taskCategory').value = activeCategoryFilter;
+    }
+
     taskRecurrenceType.value = 'daily';
     weeklyDaysGroup.classList.add('hidden');
     monthlyDateGroup.classList.add('hidden');
     document.getElementById('taskReminderTime').value = '';
     taskModalTitle.textContent = 'เพิ่มเควสต์ใหม่';
     taskModal.classList.remove('hidden');
+    
+    // Focus title input
+    setTimeout(() => {
+      const titleInput = document.getElementById('taskTitle');
+      if (titleInput) titleInput.focus();
+    }, 100);
   }
 
   function openEditTaskModal(taskId) {
@@ -528,6 +552,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         recurrence.dateOfMonth = parseInt(document.getElementById('taskMonthDate').value) || 1;
       }
 
+      const todayStr = formatDateKey(new Date());
+
       if (id) {
         const task = db.tasks.find(t => t.id === id);
         if (task) {
@@ -547,13 +573,20 @@ document.addEventListener('DOMContentLoaded', async () => {
           reminderTime,
           completions: {},
           createdAt: new Date().toISOString(),
+          createdAtKey: todayStr,
           archived: false
         };
         db.tasks.push(newTask);
       }
 
+      // If category filter was active, switch filter to 'all' or task's category so user sees new task
+      if (activeCategoryFilter !== 'all' && activeCategoryFilter !== categoryId) {
+        activeCategoryFilter = 'all';
+      }
+
       await saveData();
       closeTaskModal();
+      renderCategoryFilters();
       renderTasks();
       showToast(id ? 'บันทึกการแก้ไขเควสต์แล้ว' : 'เพิ่มเควสต์ใหม่สำเร็จ!', '⚔️');
     });
@@ -655,7 +688,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       const pointsEarned = Math.round(selectedFocusMins * 0.6);
       db.pointsBalance = (db.pointsBalance || 0) + pointsEarned;
 
-      // Select random flora from 25+ catalog
       const randomFlora = FLORA_CATALOG[Math.floor(Math.random() * FLORA_CATALOG.length)];
 
       const newTree = {
@@ -871,28 +903,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     const month = calendarMonth.getMonth();
     calMonthTitle.textContent = `${thaiMonths[month]} ${year + 543}`;
 
-    const firstDay = new Date(year, month, 1).getDay(); // 0 = Sun
+    const firstDay = new Date(year, month, 1).getDay();
     const totalDays = new Date(year, month + 1, 0).getDate();
     const prevMonthDays = new Date(year, month, 0).getDate();
 
     let html = '';
 
-    // Prev month padding
     for (let i = firstDay - 1; i >= 0; i--) {
       html += `<div class="cal-day-cell other-month"><span class="cal-day-num">${prevMonthDays - i}</span></div>`;
     }
 
     const todayStr = formatDateKey(new Date());
 
-    // Current month days
     for (let day = 1; day <= totalDays; day++) {
       const dateObj = new Date(year, month, day);
       const dateKey = formatDateKey(dateObj);
       const isToday = dateKey === todayStr;
 
-      // Find completed tasks on this date
       const doneTasks = db.tasks.filter(t => t.completions && t.completions[dateKey]);
-      // Find grown trees on this date
       const grownTrees = (db.garden || []).filter(g => g.plantedAt && g.plantedAt.startsWith(dateKey));
 
       let stampHTML = '';
@@ -913,13 +941,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     calendarDaysGrid.innerHTML = html;
 
-    // Click day cell to view tasks for that day
     calendarDaysGrid.querySelectorAll('.cal-day-cell[data-date]').forEach(cell => {
       cell.addEventListener('click', () => {
         const dStr = cell.getAttribute('data-date');
         selectedDate = new Date(dStr + 'T00:00:00');
         PixelAudio.playClickSound();
-        // Switch to Quests tab
         document.querySelector('.nav-item[data-tab="tabQuests"]').click();
       });
     });
@@ -932,7 +958,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dayLabels = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
     let html = '';
 
-    // Render last 7 days
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
@@ -994,7 +1019,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       rewardsGrid.innerHTML = html;
 
-      // Edit reward pencil click
       rewardsGrid.querySelectorAll('[data-action="edit-reward"]').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -1004,7 +1028,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
       });
 
-      // Redeem reward click
       rewardsGrid.querySelectorAll('[data-action="redeem"]').forEach(btn => {
         btn.addEventListener('click', (e) => {
           const card = e.target.closest('.reward-card');
@@ -1014,7 +1037,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
-    // Render Redeem History
     if (redeemHistoryList) {
       const history = db.redeemHistory || [];
       if (history.length === 0) {
