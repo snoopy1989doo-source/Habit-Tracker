@@ -1,5 +1,5 @@
 /**
- * PIXEL QUEST - CORE APPLICATION LOGIC
+ * PIXEL QUEST - CORE APPLICATION LOGIC (HIGH PERFORMANCE OPTIMIZED)
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -123,11 +123,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkAchievements();
   }
 
-  // Check 100% Missed Task Penalty on Past Dates
+  // Defer penalty calculations so initial load is 100% instant
   function processMissedTaskPenalties() {
     if (!db.penaltiesProcessed) db.penaltiesProcessed = {};
     const todayStr = formatDateKey(new Date());
     let totalDeducted = 0;
+    let modified = false;
 
     db.tasks.forEach(t => {
       if (t.archived) return;
@@ -146,13 +147,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             db.pointsBalance = Math.max(0, (db.pointsBalance || 0) - points);
             db.penaltiesProcessed[penaltyKey] = true;
             totalDeducted += points;
+            modified = true;
           }
         }
       }
     });
 
-    if (totalDeducted > 0) {
-      showToast(`ถูกหัก -${totalDeducted} 🪙 เนื่องจากไม่ได้ทำเควสต์ในวันที่ผ่านมา`, '⚠️');
+    if (modified) {
+      if (totalDeducted > 0) {
+        showToast(`ถูกหัก -${totalDeducted} 🪙 เนื่องจากไม่ได้ทำเควสต์ในวันที่ผ่านมา`, '⚠️');
+      }
       saveData();
     }
   }
@@ -182,7 +186,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   function renderCurrentTab() {
-    processMissedTaskPenalties();
     renderHeaderStats();
     if (activeTab === 'tabQuests') {
       renderCategoryFilters();
@@ -279,7 +282,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (task.archived) return false;
     const dateStr = formatDateKey(dateObj);
     
-    // Get created date string in LOCAL time consistently
     let createdStr = task.createdAtKey;
     if (!createdStr && task.createdAt) {
       createdStr = formatDateKey(new Date(task.createdAt));
@@ -352,10 +354,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Render Pending Tasks
     pendingTasksContainer.innerHTML = renderTaskListHTML(pendingTasks, false);
-    // Render Completed Tasks (Undo Available)
+    // Render Completed Tasks
     completedTasksContainer.innerHTML = renderTaskListHTML(completedTasks, true);
 
-    // Event listeners
     attachTaskItemListeners(pendingTasksContainer);
     attachTaskItemListeners(completedTasksContainer);
   }
@@ -477,7 +478,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('taskTitle').value = '';
     document.getElementById('taskPoints').value = 10;
     
-    // Auto-select active category filter if specific
     if (activeCategoryFilter !== 'all') {
       document.getElementById('taskCategory').value = activeCategoryFilter;
     }
@@ -489,7 +489,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     taskModalTitle.textContent = 'เพิ่มเควสต์ใหม่';
     taskModal.classList.remove('hidden');
     
-    // Focus title input
     setTimeout(() => {
       const titleInput = document.getElementById('taskTitle');
       if (titleInput) titleInput.focus();
@@ -579,7 +578,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         db.tasks.push(newTask);
       }
 
-      // If category filter was active, switch filter to 'all' or task's category so user sees new task
       if (activeCategoryFilter !== 'all' && activeCategoryFilter !== categoryId) {
         activeCategoryFilter = 'all';
       }
@@ -1345,7 +1343,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       .replace(/"/g, '&quot;');
   }
 
-  // Initial Boot
+  // Initial Instant Boot: render UI first, defer penalty checks
   updateDateDisplay();
   renderCurrentTab();
+  
+  // Background task to check missed penalties without blocking startup
+  setTimeout(() => {
+    processMissedTaskPenalties();
+  }, 500);
 });
