@@ -35,6 +35,7 @@ class TaskWidgetFactory(private val context: Context) : RemoteViewsService.Remot
         try {
             val prefs = context.getSharedPreferences("PixelQuestData", Context.MODE_PRIVATE)
             val jsonString = prefs.getString("pixel_quest_data", null) ?: return
+            val selectedCatId = prefs.getString("widget_selected_cat_id", "all") ?: "all"
 
             val rootObj = JSONObject(jsonString)
             val tasksArray = rootObj.optJSONArray("tasks") ?: return
@@ -48,6 +49,12 @@ class TaskWidgetFactory(private val context: Context) : RemoteViewsService.Remot
             for (i in 0 until tasksArray.length()) {
                 val t = tasksArray.getJSONObject(i)
                 if (t.optBoolean("archived", false)) continue
+
+                // Category Filter Check
+                val categoryId = t.optString("categoryId", "")
+                if (selectedCatId != "all" && categoryId != selectedCatId) {
+                    continue
+                }
 
                 val createdAtKey = t.optString("createdAtKey", "")
                 val createdAt = t.optString("createdAt", "")

@@ -92,6 +92,7 @@ html, body {
 
 .hidden { display: none !important; }
 .margin-top-xs { margin-top: 4px; }
+.margin-top-sm { margin-top: 8px; }
 .margin-top-md { margin-top: 1rem; }
 .margin-top-lg { margin-top: 1.5rem; }
 .margin-bottom-sm { margin-bottom: 0.5rem; }
@@ -418,7 +419,7 @@ html, body {
 
 /* Dual Box Quests Layout & Spacing */
 .task-list-wrapper {
-  padding-bottom: 100px; /* Generous bottom spacing so tasks scroll completely clear of floating buttons */
+  padding-bottom: 100px;
 }
 
 .quest-box-header {
@@ -608,7 +609,7 @@ html, body {
   color: var(--text-primary);
 }
 
-/* Floating Action Button (Compact Bottom Corner Position) */
+/* Floating Action Button */
 .pixel-fab {
   position: fixed;
   bottom: calc(var(--nav-height) + 12px);
@@ -1031,11 +1032,86 @@ html, body {
 }
 
 /* ==========================================================================
-   TAB 5: ACHIEVEMENTS & SETTINGS
+   TAB 5: ACHIEVEMENTS & SETTINGS & MASTER QUEST DASHBOARD
    ========================================================================== */
 
 .section-card {
   padding: 14px;
+}
+
+/* Master Quest Dashboard Styling */
+.master-quest-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.master-cat-group {
+  background: #111623;
+  border: 2px solid #232c3f;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.master-cat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #192133;
+  border-bottom: 1px solid #28334b;
+}
+
+.master-cat-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.master-quest-list {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  gap: 6px;
+}
+
+.master-quest-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: #151c2d;
+  border: 1px solid #26334d;
+  border-radius: 6px;
+  gap: 8px;
+}
+
+.master-quest-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.master-quest-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.master-quest-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+.master-quest-actions {
+  display: flex;
+  gap: 4px;
 }
 
 .achievements-grid {

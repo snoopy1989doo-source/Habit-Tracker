@@ -1,7 +1,7 @@
 /**
- * PIXEL QUEST - STORAGE BRIDGE
- * Single Source of Truth storage bridge for both Browser (localStorage)
- * and Android Native Widget (SharedPreferences via Capacitor Plugin)
+ * PIXEL QUEST - DUAL STORAGE BRIDGE
+ * Synchronizes state across Browser LocalStorage, Capacitor Bridge,
+ * and Native Android SharedPreferences for Home Screen Widgets.
  */
 
 window.StorageBridge = (function () {
@@ -19,6 +19,7 @@ window.StorageBridge = (function () {
         reminderTime: '08:30',
         completions: {},
         createdAt: new Date().toISOString(),
+        createdAtKey: new Date().toISOString().split('T')[0],
         archived: false
       },
       {
@@ -30,6 +31,7 @@ window.StorageBridge = (function () {
         reminderTime: '20:00',
         completions: {},
         createdAt: new Date().toISOString(),
+        createdAtKey: new Date().toISOString().split('T')[0],
         archived: false
       }
     ],
@@ -55,11 +57,25 @@ window.StorageBridge = (function () {
   };
 
   /**
-   * Check if Native Capacitor StorageBridge Plugin exists
+   * Get Native Bridge Interface (Direct Android Interface or Capacitor Plugin)
    */
-  function getNativePlugin() {
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StorageBridge) {
-      return window.Capacitor.Plugins.StorageBridge;
+  function getDirectAndroidBridge() {
+    if (window.AndroidStorageBridge && typeof window.AndroidStorageBridge.getRawData === 'function') {
+      return window.AndroidStorageBridge;
+    }
+    return null;
+  }
+
+  function getCapacitorPlugin() {
+    if (window.Capacitor) {
+      if (window.Capacitor.Plugins && window.Capacitor.Plugins.StorageBridge) {
+        return window.Capacitor.Plugins.StorageBridge;
+      }
+      if (typeof window.Capacitor.registerPlugin === 'function') {
+        try {
+          return window.Capacitor.registerPlugin('StorageBridge');
+        } catch (e) {}
+      }
     }
     return null;
   }
@@ -69,33 +85,43 @@ window.StorageBridge = (function () {
    */
   async function getData() {
     try {
-      const nativePlugin = getNativePlugin();
       let rawJson = null;
 
-      if (nativePlugin && typeof nativePlugin.getData === 'function') {
-        const res = await nativePlugin.getData();
-        rawJson = res ? res.value : null;
-      } else {
+      // 1. Try Direct Android Interface (100% reliable on native Android)
+      const androidBridge = getDirectAndroidBridge();
+      if (androidBridge) {
+        rawJson = androidBridge.getRawData();
+      }
+
+      // 2. Try Capacitor Plugin
+      if (!rawJson) {
+        const capPlugin = getCapacitorPlugin();
+        if (capPlugin && typeof capPlugin.getData === 'function') {
+          const res = await capPlugin.getData();
+          rawJson = res ? res.value : null;
+        }
+      }
+
+      // 3. Fallback to localStorage
+      if (!rawJson) {
         rawJson = localStorage.getItem(STORAGE_KEY);
       }
 
       if (!rawJson) {
-        // Save default seed data if empty
         await setData(defaultData);
         return JSON.parse(JSON.stringify(defaultData));
       }
 
       const parsed = JSON.parse(rawJson);
 
-      // Sanity fallback for missing top-level keys
       return {
-        tasks: parsed.tasks || defaultData.tasks,
-        categories: parsed.categories || defaultData.categories,
-        rewards: parsed.rewards || defaultData.rewards,
-        redeemHistory: parsed.redeemHistory || [],
+        tasks: Array.isArray(parsed.tasks) ? parsed.tasks : defaultData.tasks,
+        categories: Array.isArray(parsed.categories) ? parsed.categories : defaultData.categories,
+        rewards: Array.isArray(parsed.rewards) ? parsed.rewards : defaultData.rewards,
+        redeemHistory: Array.isArray(parsed.redeemHistory) ? parsed.redeemHistory : [],
         pointsBalance: typeof parsed.pointsBalance === 'number' ? parsed.pointsBalance : 0,
-        focusHistory: parsed.focusHistory || [],
-        garden: parsed.garden || [],
+        focusHistory: Array.isArray(parsed.focusHistory) ? parsed.focusHistory : [],
+        garden: Array.isArray(parsed.garden) ? parsed.garden : [],
         achievements: Object.assign({}, defaultData.achievements, parsed.achievements || {})
       };
     } catch (err) {
@@ -105,18 +131,27 @@ window.StorageBridge = (function () {
   }
 
   /**
-   * Save data JSON object
+   * Save data JSON object to ALL storage layers
    */
   async function setData(dataObj) {
     try {
       const jsonStr = JSON.stringify(dataObj);
-      const nativePlugin = getNativePlugin();
 
-      if (nativePlugin && typeof nativePlugin.setData === 'function') {
-        await nativePlugin.setData({ value: jsonStr });
-      } else {
-        localStorage.setItem(STORAGE_KEY, jsonStr);
+      // Save to localStorage
+      localStorage.setItem(STORAGE_KEY, jsonStr);
+
+      // Save to Direct Android Bridge (Native SharedPreferences)
+      const androidBridge = getDirectAndroidBridge();
+      if (androidBridge) {
+        androidBridge.setRawData(jsonStr);
       }
+
+      // Save to Capacitor Plugin
+      const capPlugin = getCapacitorPlugin();
+      if (capPlugin && typeof capPlugin.setData === 'function') {
+        await capPlugin.setData({ value: jsonStr });
+      }
+
       return true;
     } catch (err) {
       console.error('StorageBridge.setData error:', err);

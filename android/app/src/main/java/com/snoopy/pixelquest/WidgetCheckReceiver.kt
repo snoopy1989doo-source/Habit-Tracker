@@ -9,11 +9,61 @@ class WidgetCheckReceiver : BroadcastReceiver() {
 
     companion object {
         const val ACTION_CHECK_TASK = "com.snoopy.pixelquest.ACTION_CHECK_TASK"
+        const val ACTION_SWITCH_CATEGORY = "com.snoopy.pixelquest.ACTION_SWITCH_CATEGORY"
         const val EXTRA_TASK_ID = "extra_task_id"
         const val EXTRA_DATE_KEY = "extra_date_key"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
+        val action = intent.action ?: return
+
+        if (action == ACTION_SWITCH_CATEGORY) {
+            handleSwitchCategory(context)
+        } else if (action == ACTION_CHECK_TASK) {
+            handleCheckTask(context, intent)
+        }
+    }
+
+    private fun handleSwitchCategory(context: Context) {
+        try {
+            val prefs = context.getSharedPreferences("PixelQuestData", Context.MODE_PRIVATE)
+            val jsonString = prefs.getString("pixel_quest_data", null) ?: return
+            val currentCatId = prefs.getString("widget_selected_cat_id", "all") ?: "all"
+
+            val rootObj = JSONObject(jsonString)
+            val catsArray = rootObj.optJSONArray("categories")
+
+            val catIdList = mutableListOf<String>()
+            catIdList.add("all")
+
+            if (catsArray != null) {
+                for (i in 0 until catsArray.length()) {
+                    val cat = catsArray.getJSONObject(i)
+                    val id = cat.optString("id", "")
+                    if (id.isNotEmpty()) {
+                        catIdList.add(id)
+                    }
+                }
+            }
+
+            var currentIndex = catIdList.indexOf(currentCatId)
+            if (currentIndex == -1) currentIndex = 0
+
+            val nextIndex = (currentIndex + 1) % catIdList.size
+            val nextCatId = catIdList[nextIndex]
+
+            val editor = prefs.edit()
+            editor.putString("widget_selected_cat_id", nextCatId)
+            editor.commit() // Synchronous disk commit
+
+            // Refresh all widgets
+            StorageBridgePlugin.refreshAllWidgets(context)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun handleCheckTask(context: Context, intent: Intent) {
         val taskId = intent.getStringExtra(EXTRA_TASK_ID) ?: return
         val dateKey = intent.getStringExtra(EXTRA_DATE_KEY) ?: return
 

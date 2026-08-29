@@ -566,14 +566,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     select.innerHTML = html;
   }
 
-  function openAddTaskModal() {
+  function openAddTaskModal(defaultCategoryId) {
     populateCategorySelect('taskCategory');
     document.getElementById('taskId').value = '';
     document.getElementById('taskTitle').value = '';
     document.getElementById('taskNote').value = '';
     document.getElementById('taskPoints').value = 10;
     
-    if (activeCategoryFilter !== 'all') {
+    if (typeof defaultCategoryId === 'string' && defaultCategoryId) {
+      document.getElementById('taskCategory').value = defaultCategoryId;
+    } else if (activeCategoryFilter !== 'all') {
       document.getElementById('taskCategory').value = activeCategoryFilter;
     }
 
@@ -685,6 +687,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       closeTaskModal();
       renderCategoryFilters();
       renderTasks();
+      if (activeTab === 'tabSettings') renderMasterQuestDashboard();
       showToast(id ? 'บันทึกการแก้ไขเควสต์แล้ว' : 'เพิ่มเควสต์ใหม่สำเร็จ!', '⚔️');
     });
   }
@@ -694,6 +697,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       db.tasks = db.tasks.filter(t => t.id !== taskId);
       await saveData();
       renderTasks();
+      if (activeTab === 'tabSettings') renderMasterQuestDashboard();
       showToast('ลบเควสต์เรียบร้อย', '🗑️');
     });
   }
@@ -1282,8 +1286,108 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function renderSettings() {
+    renderMasterQuestDashboard();
     renderAchievements();
     renderCategoryManageList();
+  }
+
+  function renderMasterQuestDashboard() {
+    const container = document.getElementById('masterQuestDashboard');
+    if (!container) return;
+
+    const categories = db.categories || [];
+    const allTasks = db.tasks || [];
+
+    if (categories.length === 0) {
+      container.innerHTML = '<div class="text-sm text-muted text-center" style="padding: 12px;">ยังไม่มีหมวดหมู่</div>';
+      return;
+    }
+
+    let html = '';
+    categories.forEach(cat => {
+      const catTasks = allTasks.filter(t => !t.archived && (t.categoryId === cat.id || (!t.categoryId && cat.id === categories[0].id)));
+      
+      let tasksHtml = '';
+      if (catTasks.length === 0) {
+        tasksHtml = '<div class="text-xs text-muted text-center" style="padding: 8px;">ยังไม่มีเควสต์ในหมวดนี้</div>';
+      } else {
+        catTasks.forEach(task => {
+          const rec = task.recurrence || { type: 'daily' };
+          let recText = '🔁 ทุกวัน';
+          if (rec.type === 'none') recText = '🕒 ไม่ซ้ำ';
+          else if (rec.type === 'weekly') {
+            const dayNames = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+            const daysList = (rec.days || []).map(d => dayNames[d]).join(', ');
+            recText = `🔁 สัปดาห์ (${daysList || 'ทุกวัน'})`;
+          } else if (rec.type === 'monthly') {
+            recText = `🔁 ทุกวันที่ ${rec.dateOfMonth || 1}`;
+          }
+
+          const timeText = task.reminderTime ? ` ⏰ ${task.reminderTime}` : '';
+          const notePreview = task.note ? `<div class="text-xs text-muted margin-top-xs" style="white-space:pre-line;">${escapeHtml(task.note)}</div>` : '';
+
+          tasksHtml += `
+            <div class="master-quest-item" data-task-id="${task.id}">
+              <div class="master-quest-info">
+                <div class="master-quest-title">${escapeHtml(task.title)}</div>
+                ${notePreview}
+                <div class="master-quest-meta">
+                  <span class="due-badge due-today">${recText}${timeText}</span>
+                  <span class="points-badge">+${task.points || 10} 🪙</span>
+                </div>
+              </div>
+              <div class="master-quest-actions">
+                <button class="action-btn-sm" data-action="master-edit-task" title="แก้ไข">✏️</button>
+                <button class="action-btn-sm" data-action="master-delete-task" title="ลบ">🗑️</button>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      html += `
+        <div class="master-cat-group" data-cat-id="${cat.id}">
+          <div class="master-cat-header">
+            <div class="master-cat-title" style="color: ${cat.color || '#ff6b00'};">
+              <span>${cat.icon || '🏷️'}</span>
+              <span>${escapeHtml(cat.name)}</span>
+              <span class="text-xs text-muted">(${catTasks.length} เควสต์)</span>
+            </div>
+            <button class="pixel-btn text-btn-sm" data-action="master-add-task">+ เพิ่ม</button>
+          </div>
+          <div class="master-quest-list">
+            ${tasksHtml}
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+
+    // Attach event listeners for Master Dashboard
+    container.querySelectorAll('[data-action="master-add-task"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const group = e.target.closest('.master-cat-group');
+        const catId = group.getAttribute('data-cat-id');
+        openAddTaskModal(catId);
+      });
+    });
+
+    container.querySelectorAll('[data-action="master-edit-task"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const item = e.target.closest('.master-quest-item');
+        const taskId = item.getAttribute('data-task-id');
+        openEditTaskModal(taskId);
+      });
+    });
+
+    container.querySelectorAll('[data-action="master-delete-task"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const item = e.target.closest('.master-quest-item');
+        const taskId = item.getAttribute('data-task-id');
+        deleteTask(taskId);
+      });
+    });
   }
 
   function renderAchievements() {
