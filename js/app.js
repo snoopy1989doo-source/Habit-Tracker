@@ -6,16 +6,47 @@ document.addEventListener('DOMContentLoaded', async () => {
   // App State
   let db = await StorageBridge.getData();
   let selectedDate = new Date(); // Current date view
+  let calendarMonth = new Date(); // Calendar month view
   let activeTab = 'tabQuests';
   let activeCategoryFilter = 'all';
+  let activeGardenSubtab = 'garden';
 
   // Focus Timer State
   let focusInterval = null;
-  let focusTotalSeconds = 15 * 60;
-  let focusRemainingSeconds = 15 * 60;
+  let focusTotalSeconds = 25 * 60;
+  let focusRemainingSeconds = 25 * 60;
   let isFocusRunning = false;
   let focusEndTime = null;
-  let selectedFocusMins = 15;
+  let selectedFocusMins = 25;
+
+  // 25+ Flora Catalog Pool
+  const FLORA_CATALOG = [
+    { type: 'oak', name: 'Pixel Oak', icon: '🌳' },
+    { type: 'pine', name: 'Pixel Pine', icon: '🌲' },
+    { type: 'sakura', name: 'Sakura Tree', icon: '🌸' },
+    { type: 'crystal', name: 'Crystal Tree', icon: '🔮' },
+    { type: 'sunflower', name: 'Golden Sunflower', icon: '🌻' },
+    { type: 'rose', name: 'Red Rose', icon: '🌹' },
+    { type: 'tulip', name: 'Royal Tulip', icon: '🌷' },
+    { type: 'cactus', name: 'Desert Cactus', icon: '🌵' },
+    { type: 'bonsai', name: 'Ancient Bonsai', icon: '🪴' },
+    { type: 'bamboo', name: 'Lucky Bamboo', icon: '🎋' },
+    { type: 'lotus', name: 'Sacred Lotus', icon: '🪷' },
+    { type: 'mushroom', name: 'Magic Mushroom', icon: '🍄' },
+    { type: 'palm', name: 'Coconut Palm', icon: '🌴' },
+    { type: 'maple', name: 'Autumn Maple', icon: '🍁' },
+    { type: 'lavender', name: 'Lavender Bush', icon: '🪻' },
+    { type: 'fern', name: 'Forest Fern', icon: '🌿' },
+    { type: 'apple', name: 'Golden Apple Tree', icon: '🍎' },
+    { type: 'dragon', name: 'Dragon Plant', icon: '🪸' },
+    { type: 'willow', name: 'Weeping Willow', icon: '🌾' },
+    { type: 'clover', name: '4-Leaf Clover', icon: '🍀' },
+    { type: 'dandelion', name: 'Pixel Dandelion', icon: '🌼' },
+    { type: 'fire_flower', name: 'Flame Flower', icon: '🔥' },
+    { type: 'star_flower', name: 'Star Blossom', icon: '⭐' },
+    { type: 'cosmic_tree', name: 'Cosmic Tree', icon: '✨' },
+    { type: 'moon_tree', name: 'Moonlit Tree', icon: '🌙' }
+  ];
 
   // DOM Elements
   const headerPointsVal = document.getElementById('headerPointsVal');
@@ -23,7 +54,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const currentDateTitle = document.getElementById('currentDateTitle');
   const currentDateSubtitle = document.getElementById('currentDateSubtitle');
 
-  const taskListContainer = document.getElementById('taskListContainer');
+  const pendingTasksContainer = document.getElementById('pendingTasksContainer');
+  const completedTasksContainer = document.getElementById('completedTasksContainer');
   const emptyTasksState = document.getElementById('emptyTasksState');
   const questProgressFill = document.getElementById('questProgressFill');
   const questProgressCount = document.getElementById('questProgressCount');
@@ -39,6 +71,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const rewardModal = document.getElementById('rewardModal');
   const rewardForm = document.getElementById('rewardForm');
+  const rewardModalTitle = document.getElementById('rewardModalTitle');
   const categoryModal = document.getElementById('categoryModal');
   const categoryForm = document.getElementById('categoryForm');
 
@@ -50,6 +83,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const giveupFocusBtn = document.getElementById('giveupFocusBtn');
   const expectedPointsVal = document.getElementById('expectedPointsVal');
   const expectedTreeVal = document.getElementById('expectedTreeVal');
+  const customFocusMinsInput = document.getElementById('customFocusMinsInput');
+  const applyCustomTimeBtn = document.getElementById('applyCustomTimeBtn');
 
   // Helper Functions
   function formatDateKey(dateObj) {
@@ -87,6 +122,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkAchievements();
   }
 
+  // Check 100% Missed Task Penalty on Past Dates
+  function processMissedTaskPenalties() {
+    if (!db.penaltiesProcessed) db.penaltiesProcessed = {};
+    const todayStr = formatDateKey(new Date());
+    let totalDeducted = 0;
+
+    db.tasks.forEach(t => {
+      if (t.archived) return;
+
+      // Check last 7 past days
+      for (let i = 1; i <= 7; i++) {
+        const pastDate = new Date();
+        pastDate.setDate(pastDate.getDate() - i);
+        const pastKey = formatDateKey(pastDate);
+
+        if (isTaskDueOnDate(t, pastDate)) {
+          const penaltyKey = `${t.id}_${pastKey}`;
+          const isDone = t.completions && t.completions[pastKey];
+
+          if (!isDone && !db.penaltiesProcessed[penaltyKey]) {
+            // Apply 100% penalty
+            const points = t.points || 10;
+            db.pointsBalance = Math.max(0, (db.pointsBalance || 0) - points);
+            db.penaltiesProcessed[penaltyKey] = true;
+            totalDeducted += points;
+          }
+        }
+      }
+    });
+
+    if (totalDeducted > 0) {
+      showToast(`ถูกหัก -${totalDeducted} 🪙 เนื่องจากไม่ได้ทำเควสต์ในวันที่ผ่านมา`, '⚠️');
+      saveData();
+    }
+  }
+
   // ==========================================================================
   // NAVIGATION & TAB SWITCHING
   // ==========================================================================
@@ -112,6 +183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   function renderCurrentTab() {
+    processMissedTaskPenalties();
     renderHeaderStats();
     if (activeTab === 'tabQuests') {
       renderCategoryFilters();
@@ -119,7 +191,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else if (activeTab === 'tabFocus') {
       updateFocusDisplay();
     } else if (activeTab === 'tabGarden') {
-      renderGarden();
+      renderGardenTab();
     } else if (activeTab === 'tabRewards') {
       renderRewards();
     } else if (activeTab === 'tabSettings') {
@@ -129,8 +201,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function renderHeaderStats() {
     if (headerPointsVal) headerPointsVal.textContent = db.pointsBalance || 0;
-    
-    // Calculate Streak
     const streak = calculateStreak();
     if (headerStreakVal) headerStreakVal.textContent = `${streak}d`;
   }
@@ -142,7 +212,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       const key = formatDateKey(curr);
       const dayTasks = db.tasks.filter(t => isTaskDueOnDate(t, curr));
       if (dayTasks.length === 0) {
-        // If no tasks due today or past, continue checking yesterday
         curr.setDate(curr.getDate() - 1);
         if (streak > 365) break;
         continue;
@@ -152,7 +221,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         streak++;
         curr.setDate(curr.getDate() - 1);
       } else {
-        // Break streak if skipped past days
         if (!isSameDay(curr, new Date())) break;
         curr.setDate(curr.getDate() - 1);
       }
@@ -161,7 +229,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ==========================================================================
-  // TAB 1: QUEST BOARD & RECURRENCE LOGIC
+  // TAB 1: QUEST BOARD (DUAL BOXES & UNDO)
   // ==========================================================================
 
   const prevDateBtn = document.getElementById('prevDateBtn');
@@ -213,7 +281,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dateStr = formatDateKey(dateObj);
     const createdStr = task.createdAt ? task.createdAt.split('T')[0] : '2026-01-01';
 
-    // One-time tasks must not be shown before creation date
     if (dateStr < createdStr) return false;
 
     const rec = task.recurrence || { type: 'daily' };
@@ -222,7 +289,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else if (rec.type === 'daily') {
       return true;
     } else if (rec.type === 'weekly') {
-      const dayOfWeek = dateObj.getDay(); // 0-6
+      const dayOfWeek = dateObj.getDay();
       return Array.isArray(rec.days) && rec.days.includes(dayOfWeek);
     } else if (rec.type === 'monthly') {
       const dayOfMonth = dateObj.getDate();
@@ -255,7 +322,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function renderTasks() {
-    if (!taskListContainer) return;
+    if (!pendingTasksContainer || !completedTasksContainer) return;
 
     const dateKey = formatDateKey(selectedDate);
     let dayTasks = db.tasks.filter(t => isTaskDueOnDate(t, selectedDate));
@@ -264,26 +331,42 @@ document.addEventListener('DOMContentLoaded', async () => {
       dayTasks = dayTasks.filter(t => t.categoryId === activeCategoryFilter);
     }
 
+    const pendingTasks = dayTasks.filter(t => !(t.completions && t.completions[dateKey]));
+    const completedTasks = dayTasks.filter(t => t.completions && t.completions[dateKey]);
+
+    updateProgress(completedTasks.length, dayTasks.length);
+
     if (dayTasks.length === 0) {
-      taskListContainer.innerHTML = '';
+      pendingTasksContainer.innerHTML = '';
+      completedTasksContainer.innerHTML = '';
       emptyTasksState.classList.remove('hidden');
-      updateProgress(0, 0);
       return;
     }
 
     emptyTasksState.classList.add('hidden');
-    let completedCount = 0;
+
+    // Render Pending Tasks
+    pendingTasksContainer.innerHTML = renderTaskListHTML(pendingTasks, false);
+    // Render Completed Tasks (Undo Available)
+    completedTasksContainer.innerHTML = renderTaskListHTML(completedTasks, true);
+
+    // Event listeners
+    attachTaskItemListeners(pendingTasksContainer);
+    attachTaskItemListeners(completedTasksContainer);
+  }
+
+  function renderTaskListHTML(tasksArray, isDone) {
+    if (tasksArray.length === 0) {
+      return `<div class="text-sm text-muted text-center" style="padding: 10px;">${isDone ? 'ยังไม่มีเควสต์ที่เสร็จแล้ว' : 'ไม่มีเควสต์ที่ต้องทำ'}</div>`;
+    }
 
     let html = '';
-    dayTasks.forEach(task => {
-      const isDone = !!(task.completions && task.completions[dateKey]);
-      if (isDone) completedCount++;
-
+    tasksArray.forEach(task => {
       const cat = db.categories.find(c => c.id === task.categoryId) || { name: 'ทั่วไป', color: '#ff6b00', icon: '⚔️' };
 
       html += `
         <div class="task-item ${isDone ? 'completed' : ''}" data-id="${task.id}">
-          <div class="task-checkbox" data-action="toggle">
+          <div class="task-checkbox" data-action="toggle" title="${isDone ? 'กดเพื่อ Undo ย้อนกลับ' : 'กดเพื่อติ๊กเสร็จ'}">
             ${isDone ? '✓' : ''}
           </div>
           <div class="task-content">
@@ -303,12 +386,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
       `;
     });
+    return html;
+  }
 
-    taskListContainer.innerHTML = html;
-    updateProgress(completedCount, dayTasks.length);
-
-    // Event listeners on tasks
-    taskListContainer.querySelectorAll('.task-item').forEach(item => {
+  function attachTaskItemListeners(container) {
+    container.querySelectorAll('.task-item').forEach(item => {
       const taskId = item.getAttribute('data-id');
 
       item.querySelector('[data-action="toggle"]').addEventListener('click', () => toggleTaskComplete(taskId));
@@ -338,7 +420,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       delete task.completions[dateKey];
       db.pointsBalance = Math.max(0, (db.pointsBalance || 0) - points);
       PixelAudio.playUncheckSound();
-      showToast(`ยกเลิกเควสต์ (-${points} 🪙)`, '↩️');
+      showToast(`Undo ย้อนกลับเควสต์แล้ว (-${points} 🪙)`, '↩️');
     } else {
       task.completions[dateKey] = true;
       db.pointsBalance = (db.pointsBalance || 0) + points;
@@ -447,7 +529,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       if (id) {
-        // Edit existing
         const task = db.tasks.find(t => t.id === id);
         if (task) {
           task.title = title;
@@ -457,7 +538,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           task.reminderTime = reminderTime;
         }
       } else {
-        // Add new task
         const newTask = {
           id: 'task-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
           title,
@@ -489,7 +569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ==========================================================================
-  // TAB 2: FOCUS REALM (Pomodoro & Plant Growth)
+  // TAB 2: FOCUS REALM (CUSTOM TIME & 25+ FLORA CATALOG)
   // ==========================================================================
 
   const focusPresetButtons = document.querySelectorAll('#focusPresetGroup .preset-btn');
@@ -498,12 +578,31 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (isFocusRunning) return;
       focusPresetButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      selectedFocusMins = parseInt(btn.getAttribute('data-mins')) || 15;
+      selectedFocusMins = parseInt(btn.getAttribute('data-mins')) || 25;
+      if (customFocusMinsInput) customFocusMinsInput.value = '';
       focusTotalSeconds = selectedFocusMins * 60;
       focusRemainingSeconds = focusTotalSeconds;
       updateFocusDisplay();
     });
   });
+
+  if (applyCustomTimeBtn && customFocusMinsInput) {
+    applyCustomTimeBtn.addEventListener('click', () => {
+      if (isFocusRunning) return;
+      const customVal = parseInt(customFocusMinsInput.value);
+      if (isNaN(customVal) || customVal < 1 || customVal > 300) {
+        showToast('กรุณาระบุเวลา 1 ถึง 300 นาที', '⚠️');
+        return;
+      }
+      focusPresetButtons.forEach(b => b.classList.remove('active'));
+      selectedFocusMins = customVal;
+      focusTotalSeconds = selectedFocusMins * 60;
+      focusRemainingSeconds = focusTotalSeconds;
+      PixelAudio.playClickSound();
+      showToast(`ตั้งเวลาสมาธิ ${selectedFocusMins} นาที`, '⏱️');
+      updateFocusDisplay();
+    });
+  }
 
   if (startFocusBtn) {
     startFocusBtn.addEventListener('click', () => {
@@ -553,16 +652,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     giveupFocusBtn.classList.add('hidden');
 
     if (isSuccess) {
-      // Award Points & Plant Tree
       const pointsEarned = Math.round(selectedFocusMins * 0.6);
       db.pointsBalance = (db.pointsBalance || 0) + pointsEarned;
 
-      const treeTypes = ['oak', 'pine', 'sakura', 'magic_crystal'];
-      const randomTreeType = treeTypes[Math.floor(Math.random() * treeTypes.length)];
+      // Select random flora from 25+ catalog
+      const randomFlora = FLORA_CATALOG[Math.floor(Math.random() * FLORA_CATALOG.length)];
 
       const newTree = {
         id: 'tree-' + Date.now(),
-        treeType: randomTreeType,
+        treeType: randomFlora.type,
+        treeName: randomFlora.name,
+        treeIcon: randomFlora.icon,
         stage: 4,
         durationMinutes: selectedFocusMins,
         plantedAt: new Date().toISOString()
@@ -577,11 +677,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         durationMinutes: selectedFocusMins,
         completedAt: new Date().toISOString(),
         pointsEarned,
-        treeType: randomTreeType
+        treeType: randomFlora.type
       });
 
       PixelAudio.playFocusCompleteSound();
-      showToast(`ปลูกต้นไม้สำเร็จ! ได้รับ +${pointsEarned} 🪙`, '🌳');
+      showToast(`ปลูก ${randomFlora.icon} ${randomFlora.name} สำเร็จ! ได้รับ +${pointsEarned} 🪙`, '🌳');
       await saveData();
     } else {
       PixelAudio.playUncheckSound();
@@ -601,11 +701,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       focusTimerDigits.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     }
 
-    // Expected Rewards Text
     const pts = Math.round(selectedFocusMins * 0.6);
     if (expectedPointsVal) expectedPointsVal.textContent = `+${pts} 🪙`;
 
-    // Calculate growth frame (0 to 4)
     const progressPct = 1 - (focusRemainingSeconds / focusTotalSeconds);
     let stage = 1;
     if (progressPct >= 0.95) stage = 4;
@@ -619,7 +717,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!focusPlantVisual) return;
     let svgContent = '';
     if (stage === 1) {
-      // Seed / Sprout
       svgContent = `
         <svg width="80" height="80" viewBox="0 0 100 100">
           <ellipse cx="50" cy="85" rx="15" ry="5" fill="#3e2723"/>
@@ -628,7 +725,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         </svg>
       `;
     } else if (stage === 2) {
-      // Young Sprout
       svgContent = `
         <svg width="100" height="100" viewBox="0 0 100 100">
           <path d="M50 85 L50 45" stroke="#388e3c" stroke-width="8" stroke-linecap="round"/>
@@ -637,7 +733,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         </svg>
       `;
     } else if (stage === 3) {
-      // Growing Tree
       svgContent = `
         <svg width="120" height="120" viewBox="0 0 100 100">
           <path d="M50 90 L50 40" stroke="#4e342e" stroke-width="12" stroke-linecap="round"/>
@@ -647,7 +742,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         </svg>
       `;
     } else {
-      // Flourishing Tree
       svgContent = `
         <svg width="140" height="140" viewBox="0 0 100 100">
           <path d="M50 90 L50 35" stroke="#3e2723" stroke-width="16" stroke-linecap="round"/>
@@ -655,7 +749,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           <circle cx="32" cy="38" r="24" fill="#2e7d32"/>
           <circle cx="68" cy="38" r="24" fill="#4caf50"/>
           <circle cx="50" cy="18" r="20" fill="#81c784"/>
-          <!-- Red Apples / Oranges -->
           <circle cx="40" cy="30" r="4" fill="#ff3d00"/>
           <circle cx="62" cy="35" r="4" fill="#ff9e00"/>
           <circle cx="50" cy="45" r="4" fill="#ff3d00"/>
@@ -666,10 +759,43 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ==========================================================================
-  // TAB 3: PIXEL GARDEN
+  // TAB 3: PIXEL GARDEN & CALENDAR WITH DISCIPLINE CHART
   // ==========================================================================
 
-  function renderGarden() {
+  const subtabGardenBtn = document.getElementById('subtabGardenBtn');
+  const subtabCalendarBtn = document.getElementById('subtabCalendarBtn');
+  const subviewGarden = document.getElementById('subviewGarden');
+  const subviewCalendar = document.getElementById('subviewCalendar');
+
+  if (subtabGardenBtn && subtabCalendarBtn) {
+    subtabGardenBtn.addEventListener('click', () => {
+      activeGardenSubtab = 'garden';
+      subtabGardenBtn.classList.add('active');
+      subtabCalendarBtn.classList.remove('active');
+      subviewGarden.classList.remove('hidden');
+      subviewCalendar.classList.add('hidden');
+      PixelAudio.playClickSound();
+    });
+
+    subtabCalendarBtn.addEventListener('click', () => {
+      activeGardenSubtab = 'calendar';
+      subtabCalendarBtn.classList.add('active');
+      subtabGardenBtn.classList.remove('active');
+      subviewCalendar.classList.remove('hidden');
+      subviewGarden.classList.add('hidden');
+      PixelAudio.playClickSound();
+      renderCalendarAndChart();
+    });
+  }
+
+  function renderGardenTab() {
+    renderGardenGrid();
+    if (activeGardenSubtab === 'calendar') {
+      renderCalendarAndChart();
+    }
+  }
+
+  function renderGardenGrid() {
     const gardenGrid = document.getElementById('gardenGrid');
     const emptyGardenState = document.getElementById('emptyGardenState');
     const totalTreesCount = document.getElementById('totalTreesCount');
@@ -693,17 +819,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let html = '';
     trees.forEach(t => {
-      const treeIconMap = { oak: '🌳', pine: '🌲', sakura: '🌸', magic_crystal: '🔮' };
-      const treeNameMap = { oak: 'Pixel Oak', pine: 'Pixel Pine', sakura: 'Sakura Tree', magic_crystal: 'Crystal Tree' };
-
-      const icon = treeIconMap[t.treeType] || '🌳';
-      const name = treeNameMap[t.treeType] || 'Pixel Tree';
+      const match = FLORA_CATALOG.find(f => f.type === t.treeType);
+      const icon = t.treeIcon || (match ? match.icon : '🌳');
+      const name = t.treeName || (match ? match.name : 'Pixel Plant');
       const dateStr = t.plantedAt ? new Date(t.plantedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : '';
 
       html += `
         <div class="tree-tile">
           <div class="tree-tile-icon">${icon}</div>
-          <div class="tree-tile-name">${name}</div>
+          <div class="tree-tile-name">${escapeHtml(name)}</div>
           <div class="tree-tile-date">${dateStr}</div>
         </div>
       `;
@@ -712,8 +836,128 @@ document.addEventListener('DOMContentLoaded', async () => {
     gardenGrid.innerHTML = html;
   }
 
+  // Render Month Calendar & Discipline Chart
+  const calPrevMonthBtn = document.getElementById('calPrevMonthBtn');
+  const calNextMonthBtn = document.getElementById('calNextMonthBtn');
+  const calMonthTitle = document.getElementById('calMonthTitle');
+
+  if (calPrevMonthBtn) {
+    calPrevMonthBtn.addEventListener('click', () => {
+      calendarMonth.setMonth(calendarMonth.getMonth() - 1);
+      PixelAudio.playClickSound();
+      renderCalendarAndChart();
+    });
+  }
+
+  if (calNextMonthBtn) {
+    calNextMonthBtn.addEventListener('click', () => {
+      calendarMonth.setMonth(calendarMonth.getMonth() + 1);
+      PixelAudio.playClickSound();
+      renderCalendarAndChart();
+    });
+  }
+
+  function renderCalendarAndChart() {
+    renderCalendarGrid();
+    renderDisciplineChart();
+  }
+
+  function renderCalendarGrid() {
+    const calendarDaysGrid = document.getElementById('calendarDaysGrid');
+    if (!calendarDaysGrid || !calMonthTitle) return;
+
+    const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    calMonthTitle.textContent = `${thaiMonths[month]} ${year + 543}`;
+
+    const firstDay = new Date(year, month, 1).getDay(); // 0 = Sun
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const prevMonthDays = new Date(year, month, 0).getDate();
+
+    let html = '';
+
+    // Prev month padding
+    for (let i = firstDay - 1; i >= 0; i--) {
+      html += `<div class="cal-day-cell other-month"><span class="cal-day-num">${prevMonthDays - i}</span></div>`;
+    }
+
+    const todayStr = formatDateKey(new Date());
+
+    // Current month days
+    for (let day = 1; day <= totalDays; day++) {
+      const dateObj = new Date(year, month, day);
+      const dateKey = formatDateKey(dateObj);
+      const isToday = dateKey === todayStr;
+
+      // Find completed tasks on this date
+      const doneTasks = db.tasks.filter(t => t.completions && t.completions[dateKey]);
+      // Find grown trees on this date
+      const grownTrees = (db.garden || []).filter(g => g.plantedAt && g.plantedAt.startsWith(dateKey));
+
+      let stampHTML = '';
+      if (doneTasks.length > 0) stampHTML += `<span>✔️</span>`;
+      if (grownTrees.length > 0) {
+        const firstTree = grownTrees[0];
+        const match = FLORA_CATALOG.find(f => f.type === firstTree.treeType);
+        stampHTML += `<span>${firstTree.treeIcon || (match ? match.icon : '🌱')}</span>`;
+      }
+
+      html += `
+        <div class="cal-day-cell ${isToday ? 'today' : ''}" data-date="${dateKey}">
+          <span class="cal-day-num">${day}</span>
+          <div class="cal-stamps-row">${stampHTML}</div>
+        </div>
+      `;
+    }
+
+    calendarDaysGrid.innerHTML = html;
+
+    // Click day cell to view tasks for that day
+    calendarDaysGrid.querySelectorAll('.cal-day-cell[data-date]').forEach(cell => {
+      cell.addEventListener('click', () => {
+        const dStr = cell.getAttribute('data-date');
+        selectedDate = new Date(dStr + 'T00:00:00');
+        PixelAudio.playClickSound();
+        // Switch to Quests tab
+        document.querySelector('.nav-item[data-tab="tabQuests"]').click();
+      });
+    });
+  }
+
+  function renderDisciplineChart() {
+    const chartBars = document.getElementById('disciplineChartBars');
+    if (!chartBars) return;
+
+    const dayLabels = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+    let html = '';
+
+    // Render last 7 days
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateKey = formatDateKey(d);
+      const dayName = dayLabels[d.getDay()];
+
+      const dayDueTasks = db.tasks.filter(t => isTaskDueOnDate(t, d));
+      const doneCount = dayDueTasks.filter(t => t.completions && t.completions[dateKey]).length;
+      const totalCount = dayDueTasks.length;
+      const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+
+      html += `
+        <div class="chart-bar-col">
+          <span class="chart-bar-val">${pct}%</span>
+          <div class="chart-bar-fill" style="height: ${Math.max(4, pct)}%;"></div>
+          <span class="chart-bar-label">${dayName}</span>
+        </div>
+      `;
+    }
+
+    chartBars.innerHTML = html;
+  }
+
   // ==========================================================================
-  // TAB 4: REWARDS SHOP
+  // TAB 4: REWARDS SHOP & PENCIL EDIT BUTTON
   // ==========================================================================
 
   function renderRewards() {
@@ -737,6 +981,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         html += `
           <div class="reward-card" data-id="${r.id}">
+            <button class="reward-edit-btn" data-action="edit-reward" title="แก้ไขรางวัล">✏️</button>
             <div class="reward-icon">${r.icon || '🎁'}</div>
             <div class="reward-name">${escapeHtml(r.name)}</div>
             <div class="reward-cost">${r.cost} 🪙</div>
@@ -749,6 +994,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       rewardsGrid.innerHTML = html;
 
+      // Edit reward pencil click
+      rewardsGrid.querySelectorAll('[data-action="edit-reward"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const card = e.target.closest('.reward-card');
+          const rId = card.getAttribute('data-id');
+          openEditRewardModal(rId);
+        });
+      });
+
+      // Redeem reward click
       rewardsGrid.querySelectorAll('[data-action="redeem"]').forEach(btn => {
         btn.addEventListener('click', (e) => {
           const card = e.target.closest('.reward-card');
@@ -777,6 +1033,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         redeemHistoryList.innerHTML = hHtml;
       }
     }
+  }
+
+  function openEditRewardModal(rewardId) {
+    const reward = db.rewards.find(r => r.id === rewardId);
+    if (!reward) return;
+
+    document.getElementById('rewardId').value = reward.id;
+    document.getElementById('rewardName').value = reward.name;
+    document.getElementById('rewardCost').value = reward.cost;
+    document.getElementById('rewardIcon').value = reward.icon || '🎁';
+    if (rewardModalTitle) rewardModalTitle.textContent = 'แก้ไขรางวัล';
+    rewardModal.classList.remove('hidden');
   }
 
   async function redeemReward(rewardId) {
@@ -818,6 +1086,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('rewardName').value = '';
       document.getElementById('rewardCost').value = 100;
       document.getElementById('rewardIcon').value = '🎁';
+      if (rewardModalTitle) rewardModalTitle.textContent = 'เพิ่มรางวัลใหม่';
       rewardModal.classList.remove('hidden');
     });
   }
@@ -828,24 +1097,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (rewardForm) {
     rewardForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      const id = document.getElementById('rewardId').value;
       const name = document.getElementById('rewardName').value.trim();
       const cost = parseInt(document.getElementById('rewardCost').value) || 100;
       const icon = document.getElementById('rewardIcon').value.trim() || '🎁';
 
-      const newReward = {
-        id: 'rew-' + Date.now(),
-        name,
-        cost,
-        icon
-      };
-
-      if (!db.rewards) db.rewards = [];
-      db.rewards.push(newReward);
+      if (id) {
+        const reward = db.rewards.find(r => r.id === id);
+        if (reward) {
+          reward.name = name;
+          reward.cost = cost;
+          reward.icon = icon;
+        }
+      } else {
+        const newReward = {
+          id: 'rew-' + Date.now(),
+          name,
+          cost,
+          icon
+        };
+        if (!db.rewards) db.rewards = [];
+        db.rewards.push(newReward);
+      }
 
       await saveData();
       rewardModal.classList.add('hidden');
       renderRewards();
-      showToast('เพิ่มรางวัลใหม่สำเร็จ!', '🎁');
+      showToast(id ? 'บันทึกการแก้ไขรางวัลเรียบร้อย' : 'เพิ่มรางวัลใหม่สำเร็จ!', '🎁');
     });
   }
 
@@ -857,7 +1135,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let changed = false;
     const achievements = db.achievements || {};
 
-    // 1. First Task
     const hasCompletedTask = db.tasks.some(t => t.completions && Object.keys(t.completions).length > 0);
     if (hasCompletedTask && (!achievements.first_task || !achievements.first_task.unlocked)) {
       achievements.first_task = { unlocked: true, unlockedAt: new Date().toISOString() };
@@ -865,7 +1142,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       changed = true;
     }
 
-    // 2. Focus 5 Sessions
     const focusCount = (db.focusHistory || []).length;
     if (focusCount >= 5 && (!achievements.focus_5_sessions || !achievements.focus_5_sessions.unlocked)) {
       achievements.focus_5_sessions = { unlocked: true, unlockedAt: new Date().toISOString() };
@@ -873,7 +1149,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       changed = true;
     }
 
-    // 3. Garden 3 Trees
     const treeCount = (db.garden || []).length;
     if (treeCount >= 3 && (!achievements.garden_3_trees || !achievements.garden_3_trees.unlocked)) {
       achievements.garden_3_trees = { unlocked: true, unlockedAt: new Date().toISOString() };

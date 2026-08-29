@@ -81,16 +81,24 @@
           </div>
         </div>
 
-        <!-- Task List Container -->
+        <!-- Task List Container: Pending Tasks -->
         <div class="task-list-wrapper">
-          <div class="task-list" id="taskListContainer">
-            <!-- Dynamic task items -->
+          <div class="quest-box-title">⚔️ เควสต์ที่ต้องทำ (Pending Quests)</div>
+          <div class="task-list" id="pendingTasksContainer">
+            <!-- Dynamic pending tasks -->
           </div>
-          
+
+          <!-- Empty State -->
           <div class="empty-state hidden" id="emptyTasksState">
             <div class="pixel-icon-large">📜</div>
-            <h3>ไม่มีเควสต์สำหรับวันนี้</h3>
+            <h3>ไม่มีเควสต์ที่ค้างอยู่</h3>
             <p>กดปุ่ม + ด้านล่างเพื่อเริ่มสร้างเควสต์ใหม่ได้เลย!</p>
+          </div>
+
+          <!-- Completed Tasks Section -->
+          <div class="quest-box-title margin-top-lg text-muted">✅ เควสต์ที่เสร็จแล้ว (Completed - กดเพื่อ Undo)</div>
+          <div class="task-list completed-list" id="completedTasksContainer">
+            <!-- Dynamic completed tasks -->
           </div>
         </div>
 
@@ -102,7 +110,7 @@
       <section id="tabFocus" class="tab-page">
         <div class="focus-header pixel-box">
           <h2 class="pixel-text-cyan">⏱️ FOCUS REALM</h2>
-          <p>ตั้งเวลาสะสมสมาธิ ปลูกต้นไม้พิกเซล และรับแต้มรางวัล!</p>
+          <p>ตั้งเวลาสะสมสมาธิ ปลูกพืชพรรณพิกเซล 25+ ชนิด และรับแต้มรางวัล!</p>
         </div>
 
         <div class="focus-stage-card pixel-box">
@@ -111,7 +119,6 @@
             <div class="plant-visual" id="focusPlantVisual">
               <!-- Pixel plant SVG animation frames rendered dynamically -->
             </div>
-            <div class="sparkles-container" id="sparklesContainer"></div>
           </div>
 
           <div class="timer-display-box">
@@ -119,16 +126,23 @@
             <div class="focus-status-badge" id="focusStatusBadge">READY TO FOCUS</div>
           </div>
 
-          <!-- Preset Durations -->
-          <div class="duration-presets" id="focusPresetGroup">
-            <button class="pixel-btn preset-btn active" data-mins="15">15 นาที</button>
-            <button class="pixel-btn preset-btn" data-mins="25">25 นาที</button>
-            <button class="pixel-btn preset-btn" data-mins="30">30 นาที</button>
-            <button class="pixel-btn preset-btn" data-mins="60">60 นาที</button>
+          <!-- Preset Durations & Custom Input -->
+          <div class="duration-presets-wrapper">
+            <div class="duration-presets" id="focusPresetGroup">
+              <button class="pixel-btn preset-btn" data-mins="15">15m</button>
+              <button class="pixel-btn preset-btn active" data-mins="25">25m</button>
+              <button class="pixel-btn preset-btn" data-mins="30">30m</button>
+              <button class="pixel-btn preset-btn" data-mins="60">60m</button>
+            </div>
+            <div class="custom-time-input-row margin-top-md">
+              <label for="customFocusMinsInput" class="text-sm text-muted">หรือระบุเวลาเอง (นาที):</label>
+              <input type="number" id="customFocusMinsInput" class="pixel-input text-center" min="1" max="300" placeholder="เช่น 45" style="width: 100px;">
+              <button class="pixel-btn text-btn-sm" id="applyCustomTimeBtn">ตั้งเวลา</button>
+            </div>
           </div>
 
           <!-- Timer Controls -->
-          <div class="focus-controls">
+          <div class="focus-controls margin-top-md">
             <button class="pixel-btn btn-success font-pixel" id="startFocusBtn">▶ START FOCUS</button>
             <button class="pixel-btn btn-danger font-pixel hidden" id="giveupFocusBtn">✖ GIVE UP</button>
           </div>
@@ -141,23 +155,23 @@
             <span class="font-pixel text-gold" id="expectedPointsVal">+15 🪙</span>
           </div>
           <div class="info-row">
-            <span>ต้นไม้ที่จะได้รับ:</span>
-            <span class="text-emerald" id="expectedTreeVal">🌱 Pixel Sprout</span>
+            <span>ต้นไม้/ดอกที่จะได้รับ:</span>
+            <span class="text-emerald" id="expectedTreeVal">🌱 Random Flora (25+ Species)</span>
           </div>
         </div>
       </section>
 
-      <!-- TAB 3: PIXEL GARDEN -->
+      <!-- TAB 3: PIXEL GARDEN & CALENDAR -->
       <section id="tabGarden" class="tab-page">
         <div class="garden-header pixel-box">
-          <h2 class="pixel-text-emerald">🏡 PIXEL GARDEN</h2>
-          <p>สวนพิกเซลของคุณจากการโฟกัสและเควสต์ที่สำเร็จ</p>
+          <h2 class="pixel-text-emerald">🏡 PIXEL GARDEN & STAMP CALENDAR</h2>
+          <p>สวนพิกเซลและปฏิทินบันทึกความสม่ำเสมอของวินัย</p>
         </div>
 
         <div class="garden-stats-grid">
           <div class="stat-card pixel-box-sm">
             <div class="stat-num font-pixel" id="totalTreesCount">0</div>
-            <div class="stat-lbl">ต้นไม้ทั้งหมด</div>
+            <div class="stat-lbl">พฤกษาทั้งหมด</div>
           </div>
           <div class="stat-card pixel-box-sm">
             <div class="stat-num font-pixel" id="totalFocusMins">0</div>
@@ -165,14 +179,51 @@
           </div>
         </div>
 
-        <div class="garden-grid" id="gardenGrid">
-          <!-- Dynamic grown tree tiles -->
+        <!-- View Switcher Tabs -->
+        <div class="garden-subtabs margin-bottom-sm">
+          <button class="pixel-btn subtab-btn active" id="subtabGardenBtn">🌱 สวนพิกเซล</button>
+          <button class="pixel-btn subtab-btn" id="subtabCalendarBtn">📅 ปฏิทิน & กราฟวินัย</button>
         </div>
 
-        <div class="empty-state hidden" id="emptyGardenState">
-          <div class="pixel-icon-large">🌳</div>
-          <h3>สวนของคุณยังว่างเปล่า</h3>
-          <p>เข้าใช้งาน Focus Realm เพื่อปลูกต้นไม้แรกของคุณได้เลย!</p>
+        <!-- Subview 1: Garden Grid -->
+        <div id="subviewGarden" class="subview-page">
+          <div class="garden-grid" id="gardenGrid">
+            <!-- Dynamic grown tree tiles -->
+          </div>
+
+          <div class="empty-state hidden" id="emptyGardenState">
+            <div class="pixel-icon-large">🌳</div>
+            <h3>สวนของคุณยังว่างเปล่า</h3>
+            <p>เข้าใช้งาน Focus Realm เพื่อปลูกต้นไม้/ดอกไม้แรกของคุณได้เลย!</p>
+          </div>
+        </div>
+
+        <!-- Subview 2: Calendar & Discipline Chart -->
+        <div id="subviewCalendar" class="subview-page hidden">
+          <!-- Calendar Month Header -->
+          <div class="calendar-card pixel-box">
+            <div class="calendar-month-bar">
+              <button class="pixel-btn icon-btn" id="calPrevMonthBtn">◀</button>
+              <h3 class="font-pixel text-gold" id="calMonthTitle">สิงหาคม 2569</h3>
+              <button class="pixel-btn icon-btn" id="calNextMonthBtn">▶</button>
+            </div>
+            
+            <div class="calendar-weekdays">
+              <span>อา</span><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span>
+            </div>
+
+            <div class="calendar-grid" id="calendarDaysGrid">
+              <!-- Rendered dynamic days with stamps -->
+            </div>
+          </div>
+
+          <!-- Discipline Consistency Graph -->
+          <div class="discipline-card pixel-box margin-top-md">
+            <h3 class="font-pixel text-cyan margin-bottom-sm">📊 กราฟความสม่ำเสมอของวินัย (7 วันล่าสุด)</h3>
+            <div class="discipline-chart-bars" id="disciplineChartBars">
+              <!-- Rendered dynamic bars -->
+            </div>
+          </div>
         </div>
       </section>
 
@@ -187,7 +238,7 @@
         </div>
 
         <div class="rewards-grid" id="rewardsGrid">
-          <!-- Dynamic reward items -->
+          <!-- Dynamic reward items with pencil edit icon -->
         </div>
 
         <div class="empty-state hidden" id="emptyRewardsState">
