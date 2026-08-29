@@ -1,5 +1,5 @@
 /**
- * PIXEL QUEST - CORE APPLICATION LOGIC (HIGH PERFORMANCE OPTIMIZED)
+ * PIXEL QUEST - CORE APPLICATION LOGIC (HIGH PERFORMANCE OPTIMIZED + TASK NOTES)
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -123,7 +123,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkAchievements();
   }
 
-  // Defer penalty calculations so initial load is 100% instant
   function processMissedTaskPenalties() {
     if (!db.penaltiesProcessed) db.penaltiesProcessed = {};
     const todayStr = formatDateKey(new Date());
@@ -231,7 +230,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ==========================================================================
-  // TAB 1: QUEST BOARD (DUAL BOXES & UNDO)
+  // TAB 1: QUEST BOARD (DUAL BOXES & UNDO & NOTES)
   // ==========================================================================
 
   const prevDateBtn = document.getElementById('prevDateBtn');
@@ -352,9 +351,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     emptyTasksState.classList.add('hidden');
 
-    // Render Pending Tasks
     pendingTasksContainer.innerHTML = renderTaskListHTML(pendingTasks, false);
-    // Render Completed Tasks
     completedTasksContainer.innerHTML = renderTaskListHTML(completedTasks, true);
 
     attachTaskItemListeners(pendingTasksContainer);
@@ -369,6 +366,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let html = '';
     tasksArray.forEach(task => {
       const cat = db.categories.find(c => c.id === task.categoryId) || { name: 'ทั่วไป', color: '#ff6b00', icon: '⚔️' };
+      const hasNote = task.note && task.note.trim().length > 0;
 
       html += `
         <div class="task-item ${isDone ? 'completed' : ''}" data-id="${task.id}">
@@ -377,6 +375,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           </div>
           <div class="task-content">
             <div class="task-title">${escapeHtml(task.title)}</div>
+            ${hasNote ? `<div class="task-note">${escapeHtml(task.note)}</div>` : ''}
             <div class="task-meta">
               <span class="cat-badge" style="background:${cat.color}">
                 <span>${cat.icon}</span> ${escapeHtml(cat.name)}
@@ -476,6 +475,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     populateCategorySelect('taskCategory');
     document.getElementById('taskId').value = '';
     document.getElementById('taskTitle').value = '';
+    document.getElementById('taskNote').value = '';
     document.getElementById('taskPoints').value = 10;
     
     if (activeCategoryFilter !== 'all') {
@@ -502,6 +502,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     populateCategorySelect('taskCategory');
     document.getElementById('taskId').value = task.id;
     document.getElementById('taskTitle').value = task.title;
+    document.getElementById('taskNote').value = task.note || '';
     document.getElementById('taskCategory').value = task.categoryId || (db.categories[0] ? db.categories[0].id : '');
     document.getElementById('taskPoints').value = task.points || 10;
 
@@ -535,6 +536,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       e.preventDefault();
       const id = document.getElementById('taskId').value;
       const title = document.getElementById('taskTitle').value.trim();
+      const note = document.getElementById('taskNote').value.trim();
       const categoryId = document.getElementById('taskCategory').value;
       const points = parseInt(document.getElementById('taskPoints').value) || 10;
       const recType = taskRecurrenceType.value;
@@ -557,6 +559,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const task = db.tasks.find(t => t.id === id);
         if (task) {
           task.title = title;
+          task.note = note;
           task.categoryId = categoryId;
           task.points = points;
           task.recurrence = recurrence;
@@ -566,6 +569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const newTask = {
           id: 'task-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
           title,
+          note,
           categoryId,
           points,
           recurrence,
@@ -1343,11 +1347,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       .replace(/"/g, '&quot;');
   }
 
-  // Initial Instant Boot: render UI first, defer penalty checks
+  // Initial Instant Boot
   updateDateDisplay();
   renderCurrentTab();
   
-  // Background task to check missed penalties without blocking startup
   setTimeout(() => {
     processMissedTaskPenalties();
   }, 500);
