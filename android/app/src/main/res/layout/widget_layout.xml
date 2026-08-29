@@ -3,49 +3,37 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#0F131F"
+    android:background="@drawable/widget_bg"
     android:padding="8dp">
 
-    <!-- Widget Header Area -->
-    <LinearLayout
+    <!-- Compact Widget Header -->
+    <RelativeLayout
         android:id="@+id/widget_header_area"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:background="#181E2E"
-        android:padding="8dp"
-        android:clickable="true"
-        android:focusable="true">
+        android:paddingBottom="4dp">
 
         <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="🔥 PIXEL QUEST"
-            android:textColor="#FF9E00"
-            android:textStyle="bold"
-            android:textSize="14sp" />
-
-        <TextView
+            android:id="@+id/widget_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Today's Quests"
-            android:textColor="#A0AEC0"
-            android:textSize="11sp" />
-    </LinearLayout>
+            android:text="🔥 PIXEL QUEST"
+            android:textColor="#FF9E00"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </RelativeLayout>
 
-    <!-- Scrollable ListView -->
+    <!-- Task List -->
     <ListView
         android:id="@+id/widget_list_view"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:divider="#252F44"
-        android:dividerHeight="1dp"
-        android:paddingTop="4dp" />
+        android:divider="@null"
+        android:dividerHeight="3dp"
+        android:scrollbars="none" />
 
-    <!-- Empty State -->
+    <!-- Empty View -->
     <TextView
         android:id="@+id/widget_empty_view"
         android:layout_width="match_parent"
@@ -53,7 +41,7 @@
         android:gravity="center"
         android:text="📜 ไม่มีเควสต์สำหรับวันนี้"
         android:textColor="#64748B"
-        android:textSize="13sp"
+        android:textSize="11sp"
         android:visibility="gone" />
 
 </LinearLayout>

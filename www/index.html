@@ -333,12 +333,35 @@
           
           <div class="form-group">
             <label for="taskTitle">ชื่อเควสต์ / Habit *</label>
-            <input type="text" id="taskTitle" class="pixel-input" placeholder="เช่น ดื่มน้ำ 2 ลิตร, อ่านหนังสือ" required>
+            <input type="text" id="taskTitle" class="pixel-input" placeholder="เช่น ดื่มน้ำ 2 ลิตร 💧, อ่านหนังสือ 📚" required>
+            <!-- Quick Emoji Selection Row -->
+            <div class="quick-emoji-row">
+              <span class="emoji-picker-label">เลือกอีโมจิเพิ่ม:</span>
+              <div class="emoji-chips-container" id="taskEmojiChips">
+                <span class="emoji-chip" data-emoji="💧">💧</span>
+                <span class="emoji-chip" data-emoji="📚">📚</span>
+                <span class="emoji-chip" data-emoji="🏃">🏃</span>
+                <span class="emoji-chip" data-emoji="🧘">🧘</span>
+                <span class="emoji-chip" data-emoji="🏋️">🏋️</span>
+                <span class="emoji-chip" data-emoji="💵">💵</span>
+                <span class="emoji-chip" data-emoji="🇬🇧">🇬🇧</span>
+                <span class="emoji-chip" data-emoji="🚬">🚬</span>
+                <span class="emoji-chip" data-emoji="🍏">🍏</span>
+                <span class="emoji-chip" data-emoji="🎨">🎨</span>
+                <span class="emoji-chip" data-emoji="💻">💻</span>
+                <span class="emoji-chip" data-emoji="☕">☕</span>
+                <span class="emoji-chip" data-emoji="🛌">🛌</span>
+                <span class="emoji-chip" data-emoji="🎯">🎯</span>
+                <span class="emoji-chip" data-emoji="🚀">🚀</span>
+                <span class="emoji-chip" data-emoji="💊">💊</span>
+                <span class="emoji-chip" data-emoji="⚔️">⚔️</span>
+              </div>
+            </div>
           </div>
 
           <div class="form-group">
             <label for="taskNote">รายละเอียดเพิ่มเติม / โน้ต (Google Tasks Style)</label>
-            <textarea id="taskNote" class="pixel-input" placeholder="ใส่โน้ตหรือรายละเอียดเพิ่มเติม เช่น ขั้นตอนย่อย, ลิงก์ หรือคำอธิบาย..." rows="2" style="resize: vertical; font-family: var(--font-ui);"></textarea>
+            <textarea id="taskNote" class="pixel-input" placeholder="ใส่โน้ตหรือรายละเอียดเพิ่มเติม เช่น ขั้นตอนย่อย, ลิงก์..." rows="2" style="resize: vertical; font-family: var(--font-ui);"></textarea>
           </div>
 
           <div class="form-row">
@@ -394,6 +417,23 @@
             <button type="submit" class="pixel-btn btn-primary font-pixel">บันทึกเควสต์</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- MODAL: CUSTOM PIXEL CONFIRM DIALOG -->
+    <div class="pixel-modal-backdrop hidden" id="confirmModal">
+      <div class="pixel-modal">
+        <div class="modal-header">
+          <h3 class="font-pixel text-gold" id="confirmModalTitle">⚠️ ยืนยันการทำรายการ</h3>
+          <button class="modal-close" id="closeConfirmModalBtn">×</button>
+        </div>
+        <div class="modal-body">
+          <p id="confirmModalMessage" style="font-size: 0.95rem; color: var(--text-primary); line-height: 1.4;"></p>
+          <div class="modal-actions margin-top-md">
+            <button type="button" class="pixel-btn btn-secondary" id="confirmCancelBtn">ยกเลิก</button>
+            <button type="button" class="pixel-btn btn-danger font-pixel" id="confirmOkBtn">ตกลง</button>
+          </div>
+        </div>
       </div>
     </div>
 

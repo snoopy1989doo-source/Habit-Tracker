@@ -1,5 +1,5 @@
 /**
- * PIXEL QUEST - CORE APPLICATION LOGIC (CLEAN DAILY DUE BADGES)
+ * PIXEL QUEST - CORE APPLICATION LOGIC (SMOOTH 60FPS + EMOJI PICKER + CUSTOM PIXEL CONFIRM DIALOG)
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -68,12 +68,62 @@ document.addEventListener('DOMContentLoaded', async () => {
   const taskRecurrenceType = document.getElementById('taskRecurrenceType');
   const weeklyDaysGroup = document.getElementById('weeklyDaysGroup');
   const monthlyDateGroup = document.getElementById('monthlyDateGroup');
+  const taskEmojiChips = document.getElementById('taskEmojiChips');
 
   const rewardModal = document.getElementById('rewardModal');
   const rewardForm = document.getElementById('rewardForm');
   const rewardModalTitle = document.getElementById('rewardModalTitle');
   const categoryModal = document.getElementById('categoryModal');
   const categoryForm = document.getElementById('categoryForm');
+
+  // Pixel Confirm Modal
+  const confirmModal = document.getElementById('confirmModal');
+  const confirmModalTitle = document.getElementById('confirmModalTitle');
+  const confirmModalMessage = document.getElementById('confirmModalMessage');
+  const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+  const confirmOkBtn = document.getElementById('confirmOkBtn');
+  const closeConfirmModalBtn = document.getElementById('closeConfirmModalBtn');
+  let confirmCallback = null;
+
+  // Custom Pixel Confirm Helper
+  function showPixelConfirm(title, message, onConfirm) {
+    if (confirmModalTitle) confirmModalTitle.textContent = title || '⚠️ ยืนยันการทำรายการ';
+    if (confirmModalMessage) confirmModalMessage.textContent = message;
+    confirmCallback = onConfirm;
+    confirmModal.classList.remove('hidden');
+  }
+
+  function closePixelConfirm() {
+    confirmModal.classList.add('hidden');
+    confirmCallback = null;
+  }
+
+  if (confirmCancelBtn) confirmCancelBtn.addEventListener('click', closePixelConfirm);
+  if (closeConfirmModalBtn) closeConfirmModalBtn.addEventListener('click', closePixelConfirm);
+
+  if (confirmOkBtn) {
+    confirmOkBtn.addEventListener('click', () => {
+      if (typeof confirmCallback === 'function') {
+        confirmCallback();
+      }
+      closePixelConfirm();
+    });
+  }
+
+  // Emoji Chips Handler for Task Form
+  if (taskEmojiChips) {
+    taskEmojiChips.querySelectorAll('.emoji-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const emoji = chip.getAttribute('data-emoji');
+        const titleInput = document.getElementById('taskTitle');
+        if (titleInput) {
+          titleInput.value = titleInput.value ? `${titleInput.value} ${emoji}` : emoji;
+          titleInput.focus();
+          PixelAudio.playClickSound();
+        }
+      });
+    });
+  }
 
   // Focus Elements
   const focusPlantVisual = document.getElementById('focusPlantVisual');
@@ -160,7 +210,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ==========================================================================
-  // NAVIGATION & TAB SWITCHING
+  // NAVIGATION & TAB SWITCHING (SMOOTH 60FPS TRANSITIONS)
   // ==========================================================================
 
   const navItems = document.querySelectorAll('.nav-item');
@@ -229,7 +279,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ==========================================================================
-  // TAB 1: QUEST BOARD (DUAL BOXES & UNDO & CLEAN DUE BADGES)
+  // TAB 1: QUEST BOARD
   // ==========================================================================
 
   const prevDateBtn = document.getElementById('prevDateBtn');
@@ -303,7 +353,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     return true;
   }
 
-  // Clean Due Badge (no overdue clutter because penalties apply automatically)
   function getTaskDueBadge(task, viewDate) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -338,7 +387,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       const thaiStr = viewD.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
       return { text: `🕒 ${thaiStr}${timeStr}${recLabel}`, type: 'upcoming' };
     } else {
-      // Past view date
       const thaiStr = viewD.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
       return { text: `🕒 ${thaiStr}${timeStr}${recLabel}`, type: 'today' };
     }
@@ -635,17 +683,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  async function deleteTask(taskId) {
-    if (confirm('คุณต้องการลบเควสต์นี้หรือไม่?')) {
+  function deleteTask(taskId) {
+    showPixelConfirm('ลบเควสต์', 'คุณต้องการลบเควสต์นี้หรือไม่?', async () => {
       db.tasks = db.tasks.filter(t => t.id !== taskId);
       await saveData();
       renderTasks();
       showToast('ลบเควสต์เรียบร้อย', '🗑️');
-    }
+    });
   }
 
   // ==========================================================================
-  // TAB 2: FOCUS REALM (CUSTOM TIME & 25+ FLORA CATALOG)
+  // TAB 2: FOCUS REALM
   // ==========================================================================
 
   const focusPresetButtons = document.querySelectorAll('#focusPresetGroup .preset-btn');
@@ -689,9 +737,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (giveupFocusBtn) {
     giveupFocusBtn.addEventListener('click', () => {
-      if (confirm('คุณแน่ใจหรือว่าต้องการยกเลิกการสะสมสมาธิรอบนี้?')) {
+      showPixelConfirm('ยกเลิกสมาธิ', 'คุณแน่ใจหรือว่าต้องการยกเลิกการสะสมสมาธิรอบนี้?', () => {
         stopFocusTimer(false);
-      }
+      });
     });
   }
 
@@ -1112,7 +1160,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     rewardModal.classList.remove('hidden');
   }
 
-  async function redeemReward(rewardId) {
+  function redeemReward(rewardId) {
     const reward = db.rewards.find(r => r.id === rewardId);
     if (!reward) return;
 
@@ -1121,7 +1169,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    if (confirm(`คุณต้องการแลกรางวัล "${reward.name}" โดยใช้ ${reward.cost} แต้มหรือไม่?`)) {
+    showPixelConfirm('แลกรางวัล', `คุณต้องการแลกรางวัล "${reward.name}" โดยใช้ ${reward.cost} แต้มหรือไม่?`, async () => {
       db.pointsBalance -= reward.cost;
 
       if (!db.redeemHistory) db.redeemHistory = [];
@@ -1137,7 +1185,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       showToast(`แลกรางวัล "${reward.name}" สำเร็จ!`, '🎁');
       await saveData();
       renderRewards();
-    }
+    });
   }
 
   // Reward Modal Handlers
@@ -1280,18 +1328,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     list.innerHTML = html;
 
     list.querySelectorAll('[data-cat-delete]').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', () => {
         const catId = btn.getAttribute('data-cat-delete');
         if (db.categories.length <= 1) {
           showToast('ไม่สามารถลบหมวดหมู่สุดท้ายได้', '⚠️');
           return;
         }
-        if (confirm('คุณต้องการลบหมวดหมู่นี้หรือไม่?')) {
+        showPixelConfirm('ลบหมวดหมู่', 'คุณต้องการลบหมวดหมู่นี้หรือไม่?', async () => {
           db.categories = db.categories.filter(c => c.id !== catId);
           await saveData();
           renderCategoryManageList();
           renderCategoryFilters();
-        }
+          showToast('ลบหมวดหมู่เรียบร้อย', '🗑️');
+        });
       });
     });
   }
