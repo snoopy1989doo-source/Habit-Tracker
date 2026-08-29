@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
+import android.net.Uri
+import android.widget.RemoteViews
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -38,27 +40,32 @@ class StorageBridgePlugin : Plugin() {
             val context = context
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             
+            // Synchronous commit to ensure data is written to disk before widget refresh
             val editor = prefs.edit()
             editor.putString(PREF_KEY, jsonValue)
-            editor.apply()
+            editor.commit()
 
-            // Trigger Home Screen Widget Refresh
+            // Trigger Widget Refresh
+            refreshAllWidgets(context)
+
+            call.resolve()
+        } catch (e: Exception) {
+            call.reject("Failed to write SharedPreferences: ${e.localizedMessage}")
+        }
+    }
+
+    companion object {
+        fun refreshAllWidgets(context: Context) {
             val widgetManager = AppWidgetManager.getInstance(context)
             val widgetComponent = ComponentName(context, TaskWidgetProvider::class.java)
             val widgetIds = widgetManager.getAppWidgetIds(widgetComponent)
 
             if (widgetIds.isNotEmpty()) {
-                widgetManager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list_view)
-                val updateIntent = Intent(context, TaskWidgetProvider::class.java).apply {
-                    action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, widgetIds)
+                for (appWidgetId in widgetIds) {
+                    TaskWidgetProvider.updateAppWidgetInstance(context, widgetManager, appWidgetId)
                 }
-                context.sendBroadcast(updateIntent)
+                widgetManager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list_view)
             }
-
-            call.resolve()
-        } catch (e: Exception) {
-            call.reject("Failed to write SharedPreferences: ${e.localizedMessage}")
         }
     }
 }

@@ -39,7 +39,7 @@ class TaskWidgetFactory(private val context: Context) : RemoteViewsService.Remot
             val rootObj = JSONObject(jsonString)
             val tasksArray = rootObj.optJSONArray("tasks") ?: return
 
-            val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
             val todayStr = sdfKey.format(Date())
             val calendar = Calendar.getInstance()
             val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK) - 1 // 0 = Sun, 1 = Mon ...
@@ -49,6 +49,18 @@ class TaskWidgetFactory(private val context: Context) : RemoteViewsService.Remot
                 val t = tasksArray.getJSONObject(i)
                 if (t.optBoolean("archived", false)) continue
 
+                val createdAtKey = t.optString("createdAtKey", "")
+                val createdAt = t.optString("createdAt", "")
+                var createdDateStr = createdAtKey
+                if (createdDateStr.isEmpty() && createdAt.isNotEmpty()) {
+                    if (createdAt.length >= 10) {
+                        createdDateStr = createdAt.substring(0, 10)
+                    }
+                }
+                if (createdDateStr.isNotEmpty() && todayStr < createdDateStr) {
+                    continue
+                }
+
                 val recurrence = t.optJSONObject("recurrence")
                 val recType = recurrence?.optString("type") ?: "daily"
 
@@ -56,8 +68,9 @@ class TaskWidgetFactory(private val context: Context) : RemoteViewsService.Remot
                 if (recType == "daily") {
                     isDue = true
                 } else if (recType == "none") {
-                    val createdAt = t.optString("createdAt", "")
-                    if (createdAt.startsWith(todayStr)) isDue = true
+                    if (createdDateStr.isEmpty() || createdDateStr == todayStr || createdAt.startsWith(todayStr)) {
+                        isDue = true
+                    }
                 } else if (recType == "weekly") {
                     val daysArr = recurrence?.optJSONArray("days")
                     if (daysArr != null) {

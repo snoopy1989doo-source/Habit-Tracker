@@ -12,6 +12,13 @@ class TaskWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         for (appWidgetId in appWidgetIds) {
+            updateAppWidgetInstance(context, appWidgetManager, appWidgetId)
+        }
+        super.onUpdate(context, appWidgetManager, appWidgetIds)
+    }
+
+    companion object {
+        fun updateAppWidgetInstance(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
             val views = RemoteViews(context.packageName, R.layout.widget_layout)
 
             // Bind RemoteViewsService
@@ -23,7 +30,9 @@ class TaskWidgetProvider : AppWidgetProvider() {
             views.setEmptyView(R.id.widget_list_view, R.id.widget_empty_view)
 
             // PendingIntent to launch main app when tapping header
-            val appIntent = Intent(context, MainActivity::class.java)
+            val appIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
             val appPendingIntent = PendingIntent.getActivity(
                 context, 0, appIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -42,6 +51,5 @@ class TaskWidgetProvider : AppWidgetProvider() {
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
-        super.onUpdate(context, appWidgetManager, appWidgetIds)
     }
 }

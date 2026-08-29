@@ -3,8 +3,6 @@ package com.snoopy.pixelquest
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.appwidget.AppWidgetManager
-import android.content.ComponentName
 import org.json.JSONObject
 
 class WidgetCheckReceiver : BroadcastReceiver() {
@@ -57,16 +55,10 @@ class WidgetCheckReceiver : BroadcastReceiver() {
             if (modified) {
                 val editor = prefs.edit()
                 editor.putString("pixel_quest_data", rootObj.toString())
-                editor.apply()
+                editor.commit() // Synchronous disk commit
 
-                // Notify Widget to refresh
-                val widgetManager = AppWidgetManager.getInstance(context)
-                val widgetComponent = ComponentName(context, TaskWidgetProvider::class.java)
-                val widgetIds = widgetManager.getAppWidgetIds(widgetComponent)
-
-                if (widgetIds.isNotEmpty()) {
-                    widgetManager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list_view)
-                }
+                // Notify all Widgets to refresh
+                StorageBridgePlugin.refreshAllWidgets(context)
             }
         } catch (e: Exception) {
             e.printStackTrace()
