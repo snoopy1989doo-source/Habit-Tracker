@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PIXEL QUEST - RETRO PIXEL-ART DESIGN SYSTEM (SMOOTH 60FPS OPTIMIZED)
+   PIXEL QUEST - RETRO PIXEL-ART DESIGN SYSTEM (INSTANT 60FPS OPTIMIZED)
    Theme Motif: Fiery Flame Checkmark 🔥✔️
    ========================================================================== */
 
@@ -117,7 +117,7 @@ html, body {
   border-radius: 6px;
 }
 
-/* Retro Pixel Buttons with Smooth Spring Tap */
+/* Retro Pixel Buttons with Fast Tap Feedback */
 .pixel-btn {
   background: #232c3f;
   color: var(--text-primary);
@@ -128,7 +128,7 @@ html, body {
   font-weight: 500;
   cursor: pointer;
   box-shadow: inset -2px -2px 0px rgba(0, 0, 0, 0.5), inset 2px 2px 0px rgba(255, 255, 255, 0.1);
-  transition: transform 0.1s ease, background-color 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.08s ease, background-color 0.1s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -138,7 +138,6 @@ html, body {
 
 .pixel-btn:active {
   transform: scale(0.96) translateZ(0);
-  box-shadow: inset 2px 2px 0px rgba(0, 0, 0, 0.6);
 }
 
 .pixel-btn.btn-primary {
@@ -209,7 +208,7 @@ html, body {
   padding: 4px 8px;
   font-size: 1.1rem;
   cursor: pointer;
-  transition: transform 0.1s ease, border-color 0.15s ease, background-color 0.15s ease;
+  transition: transform 0.1s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -217,7 +216,7 @@ html, body {
 }
 
 .emoji-chip:hover, .emoji-chip:active {
-  transform: scale(1.2);
+  transform: scale(1.15);
   border-color: var(--flame-gold);
   background: #1e2638;
 }
@@ -293,7 +292,7 @@ html, body {
 }
 
 /* ==========================================================================
-   MAIN CONTENT & SMOOTH TAB SWITCHING
+   MAIN CONTENT & INSTANT TAB SWITCHING (ZERO LAG)
    ========================================================================== */
 
 .main-content {
@@ -301,21 +300,15 @@ html, body {
   overflow-y: auto;
   padding: 10px 10px calc(var(--nav-height) + 16px) 10px;
   -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
 }
 
 .tab-page {
   display: none;
-  opacity: 0;
-  transform: translate3d(0, 6px, 0);
-  transition: opacity 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-  will-change: opacity, transform;
+  contain: content;
 }
 
 .tab-page.active-tab {
   display: block;
-  opacity: 1;
-  transform: translate3d(0, 0, 0);
 }
 
 /* ==========================================================================
@@ -372,7 +365,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 4px;
-  transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+  transition: background-color 0.1s ease;
 }
 
 .cat-chip:active {
@@ -420,14 +413,24 @@ html, body {
 .progress-fill {
   height: 100%;
   background: linear-gradient(90deg, #00e676, #00b4d8);
-  transition: width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: width 0.2s ease-out;
 }
 
-/* Dual Box Quests Layout */
+/* Dual Box Quests Layout & Spacing */
+.task-list-wrapper {
+  padding-bottom: 100px; /* Generous bottom spacing so tasks scroll completely clear of floating buttons */
+}
+
+.quest-box-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
 .quest-box-title {
   font-size: 0.85rem;
   font-weight: 600;
-  margin-bottom: 8px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -448,18 +451,13 @@ html, body {
   background: var(--bg-card);
   border: 2px solid #28334a;
   border-radius: 8px;
-  transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
   position: relative;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   transform: translateZ(0);
 }
 
 .task-item:active {
   transform: scale(0.99) translateZ(0);
-}
-
-.task-item:hover {
-  border-color: #3d4c6d;
 }
 
 .task-item.completed {
@@ -480,7 +478,7 @@ html, body {
   cursor: pointer;
   font-size: 1.1rem;
   flex-shrink: 0;
-  transition: transform 0.1s ease, background-color 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.1s ease, background-color 0.1s ease;
   margin-top: 2px;
 }
 
@@ -599,7 +597,7 @@ html, body {
   cursor: pointer;
   padding: 4px;
   font-size: 0.9rem;
-  transition: color 0.15s ease, transform 0.1s ease;
+  transition: color 0.1s ease, transform 0.1s ease;
 }
 
 .action-btn-sm:active {
@@ -610,26 +608,26 @@ html, body {
   color: var(--text-primary);
 }
 
-/* Floating Action Button */
+/* Floating Action Button (Compact Bottom Corner Position) */
 .pixel-fab {
   position: fixed;
-  bottom: calc(var(--nav-height) + 16px);
-  right: 16px;
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
+  bottom: calc(var(--nav-height) + 12px);
+  right: 14px;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
   background: linear-gradient(180deg, var(--flame-gold) 0%, var(--flame-orange) 100%);
   color: #0f131f;
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: bold;
-  border: 3px solid #ff9e00;
-  box-shadow: 0 4px 16px rgba(255,107,0,0.5), inset -3px -3px 0px rgba(0,0,0,0.3);
+  border: 2px solid #ff9e00;
+  box-shadow: 0 4px 12px rgba(255,107,0,0.4);
   cursor: pointer;
-  z-index: 20;
+  z-index: 90;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.15s ease;
+  transition: transform 0.1s ease;
 }
 
 .pixel-fab:active {
@@ -692,7 +690,6 @@ html, body {
 
 .plant-visual {
   z-index: 2;
-  transition: transform 0.3s ease;
 }
 
 .timer-digits {
@@ -932,7 +929,7 @@ html, body {
   max-width: 28px;
   background: linear-gradient(180deg, var(--emerald-check) 0%, var(--flame-orange) 100%);
   border-radius: 4px 4px 0 0;
-  transition: height 0.3s ease;
+  transition: height 0.2s ease-out;
   min-height: 4px;
 }
 
@@ -1138,12 +1135,11 @@ html, body {
   gap: 2px;
   cursor: pointer;
   padding: 6px 12px;
-  transition: color 0.15s ease, transform 0.15s ease;
+  transition: color 0.1s ease;
 }
 
 .nav-icon {
   font-size: 1.3rem;
-  transition: transform 0.15s ease;
 }
 
 .nav-label {
@@ -1153,10 +1149,6 @@ html, body {
 
 .nav-item.active {
   color: var(--flame-gold);
-}
-
-.nav-item.active .nav-icon {
-  transform: scale(1.15);
 }
 
 /* ==========================================================================
@@ -1170,14 +1162,11 @@ html, body {
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
   z-index: 200;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
-  opacity: 1;
-  transition: opacity 0.15s ease;
 }
 
 .pixel-modal {
@@ -1188,12 +1177,6 @@ html, body {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
   border-radius: 8px;
   overflow: hidden;
-  animation: modalPop 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
-}
-
-@keyframes modalPop {
-  from { transform: scale(0.92); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
 }
 
 .modal-header {
@@ -1245,7 +1228,6 @@ html, body {
   font-family: var(--font-ui);
   font-size: 0.9rem;
   outline: none;
-  transition: border-color 0.15s ease;
 }
 
 .pixel-input:focus {
@@ -1309,18 +1291,7 @@ html, body {
   color: var(--text-primary);
   font-size: 0.85rem;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-  animation: toastIn 0.2s ease, toastOut 0.2s ease 2.8s forwards;
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-@keyframes toastIn {
-  from { transform: translateY(-20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-@keyframes toastOut {
-  from { opacity: 1; }
-  to { opacity: 0; transform: translateY(-10px); }
 }

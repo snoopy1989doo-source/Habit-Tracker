@@ -1,5 +1,5 @@
 /**
- * PIXEL QUEST - CORE APPLICATION LOGIC (SMOOTH 60FPS + EMOJI PICKER + CUSTOM PIXEL CONFIRM DIALOG)
+ * PIXEL QUEST - CORE APPLICATION LOGIC (INSTANT 0MS TAB SWITCHING + OPTIMIZED FAB & INLINE ADD BUTTON)
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -85,7 +85,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const closeConfirmModalBtn = document.getElementById('closeConfirmModalBtn');
   let confirmCallback = null;
 
-  // Custom Pixel Confirm Helper
   function showPixelConfirm(title, message, onConfirm) {
     if (confirmModalTitle) confirmModalTitle.textContent = title || '⚠️ ยืนยันการทำรายการ';
     if (confirmModalMessage) confirmModalMessage.textContent = message;
@@ -164,7 +163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     container.appendChild(toast);
     setTimeout(() => {
       if (toast.parentNode) toast.parentNode.removeChild(toast);
-    }, 3000);
+    }, 2800);
   }
 
   async function saveData() {
@@ -210,7 +209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ==========================================================================
-  // NAVIGATION & TAB SWITCHING (SMOOTH 60FPS TRANSITIONS)
+  // INSTANT 0MS BOTTOM NAV TAB SWITCHING
   // ==========================================================================
 
   const navItems = document.querySelectorAll('.nav-item');
@@ -219,8 +218,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   navItems.forEach(btn => {
     btn.addEventListener('click', () => {
       const targetTab = btn.getAttribute('data-tab');
-      PixelAudio.playClickSound();
+      if (activeTab === targetTab) return;
 
+      // 1. Instant 0ms visual class toggle (zero lag response)
       navItems.forEach(n => n.classList.remove('active'));
       tabPages.forEach(p => p.classList.remove('active-tab'));
 
@@ -229,7 +229,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (targetPage) targetPage.classList.add('active-tab');
 
       activeTab = targetTab;
-      renderCurrentTab();
+      PixelAudio.playClickSound();
+
+      // 2. Defer heavy data rendering to next animation frame
+      requestAnimationFrame(() => {
+        renderCurrentTab();
+      });
     });
   });
 
@@ -528,15 +533,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Task Modal Handlers
   const addTaskFab = document.getElementById('addTaskFab');
+  const inlineAddTaskBtn = document.getElementById('inlineAddTaskBtn');
   const closeTaskModalBtn = document.getElementById('closeTaskModalBtn');
   const cancelTaskBtn = document.getElementById('cancelTaskBtn');
 
   if (addTaskFab) {
     addTaskFab.addEventListener('click', openAddTaskModal);
-    addTaskFab.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      openAddTaskModal();
-    });
+  }
+
+  if (inlineAddTaskBtn) {
+    inlineAddTaskBtn.addEventListener('click', openAddTaskModal);
   }
 
   if (closeTaskModalBtn) closeTaskModalBtn.addEventListener('click', closeTaskModal);

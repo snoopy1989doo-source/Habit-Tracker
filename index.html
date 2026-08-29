@@ -62,7 +62,7 @@
           <button class="pixel-btn icon-btn" id="prevDateBtn">◀</button>
           <div class="date-display" id="dateDisplayArea">
             <span class="date-title font-pixel" id="currentDateTitle">วันนี้</span>
-            <span class="date-subtitle" id="currentDateSubtitle">30 ส.ค. 2026</span>
+            <span class="date-subtitle" id="currentDateSubtitle">30 ส.ค. 2569</span>
           </div>
           <button class="pixel-btn icon-btn" id="nextDateBtn">▶</button>
           <button class="pixel-btn text-btn-sm" id="todayDateBtn">Today</button>
@@ -86,7 +86,11 @@
 
         <!-- Task List Container: Pending Tasks -->
         <div class="task-list-wrapper">
-          <div class="quest-box-title">⚔️ เควสต์ที่ต้องทำ (Pending Quests)</div>
+          <div class="quest-box-header">
+            <div class="quest-box-title">⚔️ เควสต์ที่ต้องทำ (Pending Quests)</div>
+            <button class="pixel-btn btn-primary text-btn-sm" id="inlineAddTaskBtn">+ เพิ่มเควสต์</button>
+          </div>
+          
           <div class="task-list" id="pendingTasksContainer">
             <!-- Dynamic pending tasks -->
           </div>
@@ -105,7 +109,7 @@
           </div>
         </div>
 
-        <!-- Floating Add Button -->
+        <!-- Floating Add Button (Sleek Bottom Right Position) -->
         <button class="pixel-fab" id="addTaskFab" aria-label="เพิ่มเควสต์ใหม่">+</button>
       </section>
 
