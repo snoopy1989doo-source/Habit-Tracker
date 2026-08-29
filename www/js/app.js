@@ -1,5 +1,5 @@
 /**
- * PIXEL QUEST - CORE APPLICATION LOGIC (WITH GOOGLE TASKS STYLE DUE BADGES & NOTIFICATIONS)
+ * PIXEL QUEST - CORE APPLICATION LOGIC (CLEAN DAILY DUE BADGES)
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -229,7 +229,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ==========================================================================
-  // TAB 1: QUEST BOARD (DUAL BOXES & UNDO & NOTES & GOOGLE TASKS DUE BADGES)
+  // TAB 1: QUEST BOARD (DUAL BOXES & UNDO & CLEAN DUE BADGES)
   // ==========================================================================
 
   const prevDateBtn = document.getElementById('prevDateBtn');
@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     return true;
   }
 
-  // Calculate Google Tasks style due badge
+  // Clean Due Badge (no overdue clutter because penalties apply automatically)
   function getTaskDueBadge(task, viewDate) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -325,27 +325,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const diffDays = Math.round((viewD - today) / (1000 * 60 * 60 * 24));
+    const timeStr = task.reminderTime ? `, ${task.reminderTime}` : '';
 
     if (diffDays === 0) {
-      const timeStr = task.reminderTime ? `, ${task.reminderTime}` : '';
       return { text: `🕒 Today${timeStr}${recLabel}`, type: 'today' };
     } else if (diffDays === 1) {
-      const timeStr = task.reminderTime ? `, ${task.reminderTime}` : '';
       return { text: `🕒 Tomorrow${timeStr}${recLabel}`, type: 'upcoming' };
     } else if (diffDays > 1) {
       if (diffDays <= 7) {
-        return { text: `🕒 อีก ${diffDays} วัน${recLabel}`, type: 'upcoming' };
+        return { text: `🕒 อีก ${diffDays} วัน${timeStr}${recLabel}`, type: 'upcoming' };
       }
       const thaiStr = viewD.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
-      return { text: `🕒 ${thaiStr}${recLabel}`, type: 'upcoming' };
+      return { text: `🕒 ${thaiStr}${timeStr}${recLabel}`, type: 'upcoming' };
     } else {
-      const pastDays = Math.abs(diffDays);
-      if (pastDays < 7) {
-        return { text: `🕒 ${pastDays} days ago${recLabel}`, type: 'overdue' };
-      } else {
-        const pastWeeks = Math.floor(pastDays / 7);
-        return { text: `🕒 ${pastWeeks} weeks ago${recLabel}`, type: 'overdue' };
-      }
+      // Past view date
+      const thaiStr = viewD.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+      return { text: `🕒 ${thaiStr}${timeStr}${recLabel}`, type: 'today' };
     }
   }
 
