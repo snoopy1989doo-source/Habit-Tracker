@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Pixel Quest - Task & Habit Tracker</title>
+  
+  <!-- Retro Pixel & Modern Thai Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app" class="app-container">
+    
+    <!-- Top Header Bar -->
+    <header class="top-bar pixel-box">
+      <div class="brand-area">
+        <div class="logo-icon-wrap">
+          <svg class="flame-icon" viewBox="0 0 100 100">
+            <path d="M50 5 C60 25 75 30 75 50 C75 75 55 95 30 90 C15 85 5 70 10 50 C15 35 25 25 35 30 C30 40 35 50 45 45 C50 30 40 15 50 5 Z" fill="url(#flameGrad)"/>
+            <path d="M40 55 L48 65 L65 45" stroke="#fdfbf7" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <defs>
+              <linearGradient id="flameGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ff9e00"/>
+                <stop offset="60%" stop-color="#ff6b00"/>
+                <stop offset="100%" stop-color="#ff0055"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1 class="pixel-text-gold">PIXEL QUEST</h1>
+          <span class="sub-title">Habit & Focus Realm</span>
+        </div>
+      </div>
+
+      <div class="user-stats-pill pixel-box-sm">
+        <div class="stat-item points-item" id="headerPointsBtn">
+          <span class="stat-icon">🪙</span>
+          <span class="stat-val font-pixel" id="headerPointsVal">0</span>
+        </div>
+        <div class="stat-item streak-item">
+          <span class="stat-icon">🔥</span>
+          <span class="stat-val font-pixel" id="headerStreakVal">0d</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content" id="mainContent">
+      
+      <!-- TAB 1: QUEST BOARD (Tasks / Habits) -->
+      <section id="tabQuests" class="tab-page active-tab">
+        <!-- Date Selector Bar -->
+        <div class="date-bar pixel-box-sm">
+          <button class="pixel-btn icon-btn" id="prevDateBtn">◀</button>
+          <div class="date-display" id="dateDisplayArea">
+            <span class="date-title font-pixel" id="currentDateTitle">วันนี้</span>
+            <span class="date-subtitle" id="currentDateSubtitle">30 ส.ค. 2026</span>
+          </div>
+          <button class="pixel-btn icon-btn" id="nextDateBtn">▶</button>
+          <button class="pixel-btn text-btn-sm" id="todayDateBtn">Today</button>
+        </div>
+
+        <!-- Categories Scroll Filter -->
+        <div class="category-filter-scroll" id="categoryFilterContainer">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <!-- Progress Overview -->
+        <div class="quest-progress-card pixel-box">
+          <div class="progress-info">
+            <span class="progress-label font-pixel">Daily Progress</span>
+            <span class="progress-count" id="questProgressCount">0 / 0 Done</span>
+          </div>
+          <div class="pixel-progress-bar">
+            <div class="progress-fill" id="questProgressFill" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Task List Container -->
+        <div class="task-list-wrapper">
+          <div class="task-list" id="taskListContainer">
+            <!-- Dynamic task items -->
+          </div>
+          
+          <div class="empty-state hidden" id="emptyTasksState">
+            <div class="pixel-icon-large">📜</div>
+            <h3>ไม่มีเควสต์สำหรับวันนี้</h3>
+            <p>กดปุ่ม + ด้านล่างเพื่อเริ่มสร้างเควสต์ใหม่ได้เลย!</p>
+          </div>
+        </div>
+
+        <!-- Floating Add Button -->
+        <button class="pixel-fab" id="addTaskFab" aria-label="เพิ่มเควสต์ใหม่">+</button>
+      </section>
+
+      <!-- TAB 2: FOCUS REALM (Pomodoro & Tree Growth) -->
+      <section id="tabFocus" class="tab-page">
+        <div class="focus-header pixel-box">
+          <h2 class="pixel-text-cyan">⏱️ FOCUS REALM</h2>
+          <p>ตั้งเวลาสะสมสมาธิ ปลูกต้นไม้พิกเซล และรับแต้มรางวัล!</p>
+        </div>
+
+        <div class="focus-stage-card pixel-box">
+          <div class="tree-growth-viewport">
+            <div class="soil-base"></div>
+            <div class="plant-visual" id="focusPlantVisual">
+              <!-- Pixel plant SVG animation frames rendered dynamically -->
+            </div>
+            <div class="sparkles-container" id="sparklesContainer"></div>
+          </div>
+
+          <div class="timer-display-box">
+            <div class="timer-digits font-pixel" id="focusTimerDigits">25:00</div>
+            <div class="focus-status-badge" id="focusStatusBadge">READY TO FOCUS</div>
+          </div>
+
+          <!-- Preset Durations -->
+          <div class="duration-presets" id="focusPresetGroup">
+            <button class="pixel-btn preset-btn active" data-mins="15">15 นาที</button>
+            <button class="pixel-btn preset-btn" data-mins="25">25 นาที</button>
+            <button class="pixel-btn preset-btn" data-mins="30">30 นาที</button>
+            <button class="pixel-btn preset-btn" data-mins="60">60 นาที</button>
+          </div>
+
+          <!-- Timer Controls -->
+          <div class="focus-controls">
+            <button class="pixel-btn btn-success font-pixel" id="startFocusBtn">▶ START FOCUS</button>
+            <button class="pixel-btn btn-danger font-pixel hidden" id="giveupFocusBtn">✖ GIVE UP</button>
+          </div>
+        </div>
+
+        <!-- Focus Rewards Info -->
+        <div class="focus-info-box pixel-box-sm">
+          <div class="info-row">
+            <span>รางวัลสมาธิรอบนี้:</span>
+            <span class="font-pixel text-gold" id="expectedPointsVal">+15 🪙</span>
+          </div>
+          <div class="info-row">
+            <span>ต้นไม้ที่จะได้รับ:</span>
+            <span class="text-emerald" id="expectedTreeVal">🌱 Pixel Sprout</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: PIXEL GARDEN -->
+      <section id="tabGarden" class="tab-page">
+        <div class="garden-header pixel-box">
+          <h2 class="pixel-text-emerald">🏡 PIXEL GARDEN</h2>
+          <p>สวนพิกเซลของคุณจากการโฟกัสและเควสต์ที่สำเร็จ</p>
+        </div>
+
+        <div class="garden-stats-grid">
+          <div class="stat-card pixel-box-sm">
+            <div class="stat-num font-pixel" id="totalTreesCount">0</div>
+            <div class="stat-lbl">ต้นไม้ทั้งหมด</div>
+          </div>
+          <div class="stat-card pixel-box-sm">
+            <div class="stat-num font-pixel" id="totalFocusMins">0</div>
+            <div class="stat-lbl">นาทีสมาธิสะสม</div>
+          </div>
+        </div>
+
+        <div class="garden-grid" id="gardenGrid">
+          <!-- Dynamic grown tree tiles -->
+        </div>
+
+        <div class="empty-state hidden" id="emptyGardenState">
+          <div class="pixel-icon-large">🌳</div>
+          <h3>สวนของคุณยังว่างเปล่า</h3>
+          <p>เข้าใช้งาน Focus Realm เพื่อปลูกต้นไม้แรกของคุณได้เลย!</p>
+        </div>
+      </section>
+
+      <!-- TAB 4: REWARDS SHOP -->
+      <section id="tabRewards" class="tab-page">
+        <div class="shop-header pixel-box">
+          <div class="shop-title-row">
+            <h2 class="pixel-text-gold">🏆 REWARDS SHOP</h2>
+            <button class="pixel-btn text-btn-sm" id="addRewardBtn">+ เพิ่มรางวัล</button>
+          </div>
+          <p>ใช้แต้ม 🪙 ที่สะสมได้แลกรางวัลที่คุณตั้งเอง!</p>
+        </div>
+
+        <div class="rewards-grid" id="rewardsGrid">
+          <!-- Dynamic reward items -->
+        </div>
+
+        <div class="empty-state hidden" id="emptyRewardsState">
+          <div class="pixel-icon-large">🎁</div>
+          <h3>ยังไม่มีรางวัลในร้านค้า</h3>
+          <p>กดปุ่ม "+ เพิ่มรางวัล" เพื่อสร้างรางวัลของคุณเอง!</p>
+        </div>
+
+        <div class="history-section pixel-box margin-top-lg">
+          <h3 class="font-pixel text-muted">📜 ประวัติการแลกรางวัล</h3>
+          <ul class="history-list" id="redeemHistoryList">
+            <!-- Dynamic history log -->
+          </ul>
+        </div>
+      </section>
+
+      <!-- TAB 5: ACHIEVEMENTS & SETTINGS -->
+      <section id="tabSettings" class="tab-page">
+        <div class="settings-header pixel-box">
+          <h2>⚙️ SETTINGS & ACHIEVEMENTS</h2>
+        </div>
+
+        <!-- Achievements Grid -->
+        <div class="section-card pixel-box">
+          <h3 class="font-pixel text-gold">🏅 ACHIEVEMENTS</h3>
+          <div class="achievements-grid" id="achievementsGrid">
+            <!-- Dynamic achievements -->
+          </div>
+        </div>
+
+        <!-- Category Management -->
+        <div class="section-card pixel-box margin-top-md">
+          <div class="card-header-row">
+            <h3 class="font-pixel">🏷️ จัดการหมวดหมู่</h3>
+            <button class="pixel-btn text-btn-sm" id="addCategoryBtn">+ เพิ่มหมวดหมู่</button>
+          </div>
+          <div class="category-list" id="categoryManageList">
+            <!-- Dynamic category list -->
+          </div>
+        </div>
+
+        <!-- Backup & Import Data -->
+        <div class="section-card pixel-box margin-top-md">
+          <h3 class="font-pixel">💾 สำรองข้อมูล (Backup & Sync)</h3>
+          <p class="text-sm text-muted margin-bottom-sm">สำรองข้อมูลเป็นไฟล์ JSON เพื่อย้ายเครื่องหรือเก็บสำรอง</p>
+          <div class="backup-actions">
+            <button class="pixel-btn btn-primary" id="exportDataBtn">📥 Export Data (JSON)</button>
+            <label class="pixel-btn btn-secondary" for="importFileInput">📤 Import Data (JSON)</label>
+            <input type="file" id="importFileInput" accept=".json" class="hidden">
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav pixel-box">
+      <button class="nav-item active" data-tab="tabQuests">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">Quests</span>
+      </button>
+      <button class="nav-item" data-tab="tabFocus">
+        <span class="nav-icon">⏱️</span>
+        <span class="nav-label">Focus</span>
+      </button>
+      <button class="nav-item" data-tab="tabGarden">
+        <span class="nav-icon">🏡</span>
+        <span class="nav-label">Garden</span>
+      </button>
+      <button class="nav-item" data-tab="tabRewards">
+        <span class="nav-icon">🏆</span>
+        <span class="nav-label">Shop</span>
+      </button>
+      <button class="nav-item" data-tab="tabSettings">
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-label">Settings</span>
+      </button>
+    </nav>
+
+    <!-- MODAL: ADD/EDIT TASK -->
+    <div class="pixel-modal-backdrop hidden" id="taskModal">
+      <div class="pixel-modal">
+        <div class="modal-header">
+          <h3 class="font-pixel" id="taskModalTitle">เพิ่มเควสต์ใหม่</h3>
+          <button class="modal-close" id="closeTaskModalBtn">×</button>
+        </div>
+        <form id="taskForm" class="modal-body">
+          <input type="hidden" id="taskId">
+          
+          <div class="form-group">
+            <label for="taskTitle">ชื่อเควสต์ / Habit *</label>
+            <input type="text" id="taskTitle" class="pixel-input" placeholder="เช่น ดื่มน้ำ 2 ลิตร, อ่านหนังสือ" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="taskCategory">หมวดหมู่</label>
+              <select id="taskCategory" class="pixel-input">
+                <!-- Dynamic categories -->
+              </select>
+            </div>
+            <div class="form-group width-100">
+              <label for="taskPoints">แต้ม (🪙)</label>
+              <input type="number" id="taskPoints" class="pixel-input" min="1" max="1000" value="10">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="taskRecurrenceType">การซ้ำ (Recurrence)</label>
+            <select id="taskRecurrenceType" class="pixel-input">
+              <option value="none">ไม่ซ้ำ (One-time)</option>
+              <option value="daily" selected>ซ้ำทุกวัน (Daily)</option>
+              <option value="weekly">ซ้ำทุกสัปดาห์ (Weekly)</option>
+              <option value="monthly">ซ้ำทุกเดือน (Monthly)</option>
+            </select>
+          </div>
+
+          <!-- Weekly Days Selection -->
+          <div class="form-group hidden" id="weeklyDaysGroup">
+            <label>เลือกวันในสัปดาห์</label>
+            <div class="weekday-picker">
+              <label class="day-chip"><input type="checkbox" value="0"> อา</label>
+              <label class="day-chip"><input type="checkbox" value="1" checked> จ</label>
+              <label class="day-chip"><input type="checkbox" value="2" checked> อ</label>
+              <label class="day-chip"><input type="checkbox" value="3" checked> พ</label>
+              <label class="day-chip"><input type="checkbox" value="4" checked> พฤ</label>
+              <label class="day-chip"><input type="checkbox" value="5" checked> ศ</label>
+              <label class="day-chip"><input type="checkbox" value="6"> ส</label>
+            </div>
+          </div>
+
+          <!-- Monthly Date Selection -->
+          <div class="form-group hidden" id="monthlyDateGroup">
+            <label for="taskMonthDate">วันที่ในเดือน (1 - 31)</label>
+            <input type="number" id="taskMonthDate" class="pixel-input" min="1" max="31" value="15">
+          </div>
+
+          <div class="form-group">
+            <label for="taskReminderTime">เวลาแจ้งเตือน (Optional)</label>
+            <input type="time" id="taskReminderTime" class="pixel-input">
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="pixel-btn btn-secondary" id="cancelTaskBtn">ยกเลิก</button>
+            <button type="submit" class="pixel-btn btn-primary font-pixel">บันทึกเควสต์</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: ADD/EDIT REWARD -->
+    <div class="pixel-modal-backdrop hidden" id="rewardModal">
+      <div class="pixel-modal">
+        <div class="modal-header">
+          <h3 class="font-pixel" id="rewardModalTitle">เพิ่มรางวัลใหม่</h3>
+          <button class="modal-close" id="closeRewardModalBtn">×</button>
+        </div>
+        <form id="rewardForm" class="modal-body">
+          <input type="hidden" id="rewardId">
+          <div class="form-group">
+            <label for="rewardName">ชื่อรางวัล *</label>
+            <input type="text" id="rewardName" class="pixel-input" placeholder="เช่น ดื่มชานมมุก, ดูหนัง 1 เรื่อง" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="rewardCost">แต้มที่ต้องใช้ (🪙) *</label>
+              <input type="number" id="rewardCost" class="pixel-input" min="1" value="100" required>
+            </div>
+            <div class="form-group width-100">
+              <label for="rewardIcon">ไอคอน</label>
+              <input type="text" id="rewardIcon" class="pixel-input text-center" value="🎁" maxlength="2">
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="pixel-btn btn-secondary" id="cancelRewardBtn">ยกเลิก</button>
+            <button type="submit" class="pixel-btn btn-primary font-pixel">บันทึกรางวัล</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: ADD/EDIT CATEGORY -->
+    <div class="pixel-modal-backdrop hidden" id="categoryModal">
+      <div class="pixel-modal">
+        <div class="modal-header">
+          <h3 class="font-pixel" id="categoryModalTitle">เพิ่มหมวดหมู่</h3>
+          <button class="modal-close" id="closeCategoryModalBtn">×</button>
+        </div>
+        <form id="categoryForm" class="modal-body">
+          <input type="hidden" id="categoryId">
+          <div class="form-group">
+            <label for="categoryName">ชื่อหมวดหมู่ *</label>
+            <input type="text" id="categoryName" class="pixel-input" placeholder="เช่น สุขภาพ, งาน, กายบริหาร" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="categoryColor">สีหมวดหมู่</label>
+              <input type="color" id="categoryColor" class="pixel-color-picker" value="#ff6b00">
+            </div>
+            <div class="form-group width-100">
+              <label for="categoryIcon">ไอคอน</label>
+              <input type="text" id="categoryIcon" class="pixel-input text-center" value="🏷️" maxlength="2">
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="pixel-btn btn-secondary" id="cancelCategoryBtn">ยกเลิก</button>
+            <button type="submit" class="pixel-btn btn-primary font-pixel">บันทึกหมวดหมู่</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+  </div>
+
+  <!-- Capacitor Core Script Bridge -->
+  <script src="js/storage-bridge.js"></script>
+  <script src="js/audio-synth.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
