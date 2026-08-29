@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Pixel Quest</string>
+    <string name="title_activity_main">Pixel Quest</string>
+    <string name="package_name">com.snoopy.pixelquest</string>
+    <string name="custom_url_scheme">com.snoopy.pixelquest</string>
+</resources>

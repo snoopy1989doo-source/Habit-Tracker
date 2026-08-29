@@ -1,0 +1,138 @@
+package com.snoopy.pixelquest
+
+import android.content.Context
+import android.content.Intent
+import android.widget.RemoteViews
+import android.widget.RemoteViewsService
+import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+
+class TaskWidgetService : RemoteViewsService() {
+    override fun onGetViewFactory(intent: Intent): RemoteViewsFactory {
+        return TaskWidgetFactory(this.applicationContext)
+    }
+}
+
+class TaskWidgetFactory(private val context: Context) : RemoteViewsService.RemoteViewsFactory {
+
+    private data class WidgetTaskItem(
+        val id: String,
+        val title: String,
+        val points: Int,
+        val isCompleted: Boolean,
+        val dateKey: String
+    )
+
+    private val itemList = mutableListOf<WidgetTaskItem>()
+
+    override fun onCreate() {}
+
+    override fun onDataSetChanged() {
+        itemList.clear()
+        try {
+            val prefs = context.getSharedPreferences("PixelQuestData", Context.MODE_PRIVATE)
+            val jsonString = prefs.getString("pixel_quest_data", null) ?: return
+
+            val rootObj = JSONObject(jsonString)
+            val tasksArray = rootObj.optJSONArray("tasks") ?: return
+
+            val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            val todayStr = sdfKey.format(Date())
+            val calendar = Calendar.getInstance()
+            val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK) - 1 // 0 = Sun, 1 = Mon ...
+            val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
+
+            for (i in 0 until tasksArray.length()) {
+                val t = tasksArray.getJSONObject(i)
+                if (t.optBoolean("archived", false)) continue
+
+                val recurrence = t.optJSONObject("recurrence")
+                val recType = recurrence?.optString("type") ?: "daily"
+
+                var isDue = false
+                if (recType == "daily") {
+                    isDue = true
+                } else if (recType == "none") {
+                    val createdAt = t.optString("createdAt", "")
+                    if (createdAt.startsWith(todayStr)) isDue = true
+                } else if (recType == "weekly") {
+                    val daysArr = recurrence?.optJSONArray("days")
+                    if (daysArr != null) {
+                        for (d in 0 until daysArr.length()) {
+                            if (daysArr.getInt(d) == dayOfWeek) {
+                                isDue = true
+                                break
+                            }
+                        }
+                    }
+                } else if (recType == "monthly") {
+                    val dateNum = recurrence?.optInt("dateOfMonth", 1) ?: 1
+                    if (dateNum == dayOfMonth) isDue = true
+                }
+
+                if (isDue) {
+                    val completions = t.optJSONObject("completions")
+                    val isDone = completions?.optBoolean(todayStr, false) ?: false
+
+                    itemList.add(
+                        WidgetTaskItem(
+                            id = t.optString("id", ""),
+                            title = t.optString("title", "Task"),
+                            points = t.optInt("points", 10),
+                            isCompleted = isDone,
+                            dateKey = todayStr
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    override fun onDestroy() {
+        itemList.clear()
+    }
+
+    override fun getCount(): Int = itemList.size
+
+    override fun getViewAt(position: Int): RemoteViews {
+        if (position < 0 || position >= itemList.size) {
+            return RemoteViews(context.packageName, R.layout.widget_item)
+        }
+
+        val item = itemList[position]
+        val views = RemoteViews(context.packageName, R.layout.widget_item)
+
+        views.setTextViewText(R.id.widget_task_title, item.title)
+        views.setTextViewText(R.id.widget_task_points, "+${item.points} 🪙")
+
+        if (item.isCompleted) {
+            views.setTextViewText(R.id.widget_task_checkbox, "✓")
+            views.setFloat(R.id.widget_task_title, "setAlpha", 0.5f)
+        } else {
+            views.setTextViewText(R.id.widget_task_checkbox, "")
+            views.setFloat(R.id.widget_task_title, "setAlpha", 1.0f)
+        }
+
+        val fillInIntent = Intent().apply {
+            putExtra(WidgetCheckReceiver.EXTRA_TASK_ID, item.id)
+            putExtra(WidgetCheckReceiver.EXTRA_DATE_KEY, item.dateKey)
+        }
+        views.setOnClickFillInIntent(R.id.widget_task_checkbox, fillInIntent)
+        views.setOnClickFillInIntent(R.id.widget_task_title, fillInIntent)
+
+        return views
+    }
+
+    override fun getLoadingView(): RemoteViews? = null
+
+    override fun getViewTypeCount(): Int = 1
+
+    override fun getItemId(position: Int): Long = position.toLong()
+
+    override fun hasStableIds(): Boolean = true
+}

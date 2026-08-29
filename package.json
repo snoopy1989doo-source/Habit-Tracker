@@ -1,0 +1,28 @@
+{
+  "name": "pixel-quest",
+  "version": "1.0.0",
+  "description": "Pixel Quest - Task/Habit Tracker & Focus Pomodoro with Native Android Home Screen Widget",
+  "main": "www/index.html",
+  "scripts": {
+    "start": "npx serve www",
+    "cap:sync": "npx cap sync android",
+    "cap:build": "npx cap copy && npx cap open android"
+  },
+  "keywords": [
+    "habit-tracker",
+    "pomodoro",
+    "pixel-art",
+    "android-widget",
+    "capacitor"
+  ],
+  "author": "Snoopy",
+  "license": "MIT",
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/local-notifications": "^8.3.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.0"
+  }
+}
