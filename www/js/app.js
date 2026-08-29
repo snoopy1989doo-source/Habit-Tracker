@@ -1,5 +1,5 @@
 /**
- * PIXEL QUEST - CORE APPLICATION LOGIC (HIGH PERFORMANCE OPTIMIZED + TASK NOTES)
+ * PIXEL QUEST - CORE APPLICATION LOGIC (WITH GOOGLE TASKS STYLE DUE BADGES & NOTIFICATIONS)
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -125,7 +125,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function processMissedTaskPenalties() {
     if (!db.penaltiesProcessed) db.penaltiesProcessed = {};
-    const todayStr = formatDateKey(new Date());
     let totalDeducted = 0;
     let modified = false;
 
@@ -230,7 +229,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ==========================================================================
-  // TAB 1: QUEST BOARD (DUAL BOXES & UNDO & NOTES)
+  // TAB 1: QUEST BOARD (DUAL BOXES & UNDO & NOTES & GOOGLE TASKS DUE BADGES)
   // ==========================================================================
 
   const prevDateBtn = document.getElementById('prevDateBtn');
@@ -304,6 +303,52 @@ document.addEventListener('DOMContentLoaded', async () => {
     return true;
   }
 
+  // Calculate Google Tasks style due badge
+  function getTaskDueBadge(task, viewDate) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const viewD = new Date(viewDate);
+    viewD.setHours(0, 0, 0, 0);
+
+    const rec = task.recurrence || { type: 'daily' };
+    let recLabel = '';
+    if (rec.type === 'daily') recLabel = ' 🔁';
+    else if (rec.type === 'weekly') recLabel = ' 🔁 สัปดาห์';
+    else if (rec.type === 'monthly') recLabel = ' 🔁 เดือน';
+
+    const dateKey = formatDateKey(viewDate);
+    const isDone = task.completions && task.completions[dateKey];
+
+    if (isDone) {
+      return { text: `✔ เสร็จแล้ว${recLabel}`, type: 'done' };
+    }
+
+    const diffDays = Math.round((viewD - today) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      const timeStr = task.reminderTime ? `, ${task.reminderTime}` : '';
+      return { text: `🕒 Today${timeStr}${recLabel}`, type: 'today' };
+    } else if (diffDays === 1) {
+      const timeStr = task.reminderTime ? `, ${task.reminderTime}` : '';
+      return { text: `🕒 Tomorrow${timeStr}${recLabel}`, type: 'upcoming' };
+    } else if (diffDays > 1) {
+      if (diffDays <= 7) {
+        return { text: `🕒 อีก ${diffDays} วัน${recLabel}`, type: 'upcoming' };
+      }
+      const thaiStr = viewD.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+      return { text: `🕒 ${thaiStr}${recLabel}`, type: 'upcoming' };
+    } else {
+      const pastDays = Math.abs(diffDays);
+      if (pastDays < 7) {
+        return { text: `🕒 ${pastDays} days ago${recLabel}`, type: 'overdue' };
+      } else {
+        const pastWeeks = Math.floor(pastDays / 7);
+        return { text: `🕒 ${pastWeeks} weeks ago${recLabel}`, type: 'overdue' };
+      }
+    }
+  }
+
   function renderCategoryFilters() {
     if (!categoryFilterContainer) return;
     let html = `<div class="cat-chip ${activeCategoryFilter === 'all' ? 'active' : ''}" data-cat="all">🌟 ทั้งหมด</div>`;
@@ -367,6 +412,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     tasksArray.forEach(task => {
       const cat = db.categories.find(c => c.id === task.categoryId) || { name: 'ทั่วไป', color: '#ff6b00', icon: '⚔️' };
       const hasNote = task.note && task.note.trim().length > 0;
+      const dueInfo = getTaskDueBadge(task, selectedDate);
 
       html += `
         <div class="task-item ${isDone ? 'completed' : ''}" data-id="${task.id}">
@@ -377,11 +423,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="task-title">${escapeHtml(task.title)}</div>
             ${hasNote ? `<div class="task-note">${escapeHtml(task.note)}</div>` : ''}
             <div class="task-meta">
+              <span class="due-badge due-${dueInfo.type}">${dueInfo.text}</span>
               <span class="cat-badge" style="background:${cat.color}">
                 <span>${cat.icon}</span> ${escapeHtml(cat.name)}
               </span>
               <span class="points-badge">+${task.points || 10} 🪙</span>
-              ${task.reminderTime ? `<span>⏰ ${task.reminderTime}</span>` : ''}
             </div>
           </div>
           <div class="task-actions">
