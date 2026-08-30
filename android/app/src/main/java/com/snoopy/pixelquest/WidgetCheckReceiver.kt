@@ -1,5 +1,6 @@
 package com.snoopy.pixelquest
 
+import android.appwidget.AppWidgetManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -18,17 +19,22 @@ class WidgetCheckReceiver : BroadcastReceiver() {
         val action = intent.action ?: return
 
         if (action == ACTION_SWITCH_CATEGORY) {
-            handleSwitchCategory(context)
+            handleSwitchCategory(context, intent)
         } else if (action == ACTION_CHECK_TASK) {
             handleCheckTask(context, intent)
         }
     }
 
-    private fun handleSwitchCategory(context: Context) {
+    private fun handleSwitchCategory(context: Context, intent: Intent) {
+        val appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+        if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return
+
         try {
             val prefs = context.getSharedPreferences("PixelQuestData", Context.MODE_PRIVATE)
             val jsonString = prefs.getString("pixel_quest_data", null) ?: return
-            val currentCatId = prefs.getString("widget_selected_cat_id", "all") ?: "all"
+            
+            // Read per-widget selected category ID
+            val currentCatId = prefs.getString("widget_cat_$appWidgetId", "all") ?: "all"
 
             val rootObj = JSONObject(jsonString)
             val catsArray = rootObj.optJSONArray("categories")
@@ -52,12 +58,15 @@ class WidgetCheckReceiver : BroadcastReceiver() {
             val nextIndex = (currentIndex + 1) % catIdList.size
             val nextCatId = catIdList[nextIndex]
 
+            // Save to THIS WIDGET INSTANCE ONLY!
             val editor = prefs.edit()
-            editor.putString("widget_selected_cat_id", nextCatId)
+            editor.putString("widget_cat_$appWidgetId", nextCatId)
             editor.commit() // Synchronous disk commit
 
-            // Refresh all widgets
-            StorageBridgePlugin.refreshAllWidgets(context)
+            // Refresh ONLY this widget instance so other stacked widgets are NOT affected!
+            val widgetManager = AppWidgetManager.getInstance(context)
+            TaskWidgetProvider.updateAppWidgetInstance(context, widgetManager, appWidgetId)
+            widgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list_view)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -94,6 +103,8 @@ class WidgetCheckReceiver : BroadcastReceiver() {
                     } else {
                         completions.put(dateKey, true)
                         currentPoints += taskPoints
+                        // Cancel any pending notification for this task
+                        TaskNotificationHelper.cancelTaskNotification(context, taskId)
                     }
 
                     rootObj.put("pointsBalance", currentPoints)

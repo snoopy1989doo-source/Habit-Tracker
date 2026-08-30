@@ -18,18 +18,29 @@ class TaskWidgetProvider : AppWidgetProvider() {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
     }
 
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        val prefs = context.getSharedPreferences("PixelQuestData", Context.MODE_PRIVATE)
+        val editor = prefs.edit()
+        for (appWidgetId in appWidgetIds) {
+            editor.remove("widget_cat_$appWidgetId")
+        }
+        editor.commit()
+        super.onDeleted(context, appWidgetIds)
+    }
+
     companion object {
         fun updateAppWidgetInstance(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
             val views = RemoteViews(context.packageName, R.layout.widget_layout)
 
-            // Read SharedPreferences to get Points & Selected Category Name
+            // Read SharedPreferences to get Points & Per-Widget Selected Category Name
             var pointsBalance = 0
             var categoryLabel = "🌟 ทั้งหมด ▾"
 
             try {
                 val prefs = context.getSharedPreferences("PixelQuestData", Context.MODE_PRIVATE)
                 val jsonString = prefs.getString("pixel_quest_data", null)
-                val selectedCatId = prefs.getString("widget_selected_cat_id", "all") ?: "all"
+                // Independent per-widget instance category key!
+                val selectedCatId = prefs.getString("widget_cat_$appWidgetId", "all") ?: "all"
 
                 if (jsonString != null) {
                     val rootObj = JSONObject(jsonString)
@@ -57,10 +68,10 @@ class TaskWidgetProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_points, "$pointsBalance 🪙")
             views.setTextViewText(R.id.widget_category_btn, categoryLabel)
 
-            // Bind RemoteViewsService
+            // Bind RemoteViewsService with unique Intent URI per widgetId
             val serviceIntent = Intent(context, TaskWidgetService::class.java).apply {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
+                data = Uri.parse("pixelquest://widget/service/$appWidgetId")
             }
             views.setRemoteAdapter(R.id.widget_list_view, serviceIntent)
             views.setEmptyView(R.id.widget_list_view, R.id.widget_empty_view)
@@ -75,22 +86,25 @@ class TaskWidgetProvider : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.widget_header_area, appPendingIntent)
 
-            // PendingIntent for Category Switcher Button
+            // PendingIntent for Per-Widget Category Switcher Button
             val switchCatIntent = Intent(context, WidgetCheckReceiver::class.java).apply {
                 action = WidgetCheckReceiver.ACTION_SWITCH_CATEGORY
+                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                data = Uri.parse("pixelquest://widget/switch_cat/$appWidgetId")
             }
             val switchCatPendingIntent = PendingIntent.getBroadcast(
-                context, 101, switchCatIntent,
+                context, appWidgetId, switchCatIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
             )
             views.setOnClickPendingIntent(R.id.widget_category_btn, switchCatPendingIntent)
 
-            // PendingIntent Template for task checkbox click
+            // PendingIntent Template for task checkbox click (passes widgetId)
             val checkIntent = Intent(context, WidgetCheckReceiver::class.java).apply {
                 action = WidgetCheckReceiver.ACTION_CHECK_TASK
+                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
             }
             val checkPendingIntent = PendingIntent.getBroadcast(
-                context, 0, checkIntent,
+                context, 1000 + appWidgetId, checkIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
             )
             views.setPendingIntentTemplate(R.id.widget_list_view, checkPendingIntent)

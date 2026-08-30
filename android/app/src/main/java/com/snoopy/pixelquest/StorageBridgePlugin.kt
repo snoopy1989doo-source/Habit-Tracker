@@ -48,8 +48,9 @@ class StorageBridgePlugin : Plugin() {
             editor.putString(PREF_KEY, jsonValue)
             editor.commit()
 
-            // Trigger Widget Refresh
+            // Trigger Widget Refresh & Notification Reschedule
             refreshAllWidgets(context)
+            TaskNotificationHelper.rescheduleAll(context)
 
             call.resolve()
         } catch (e: Exception) {

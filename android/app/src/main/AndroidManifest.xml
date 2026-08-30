@@ -4,6 +4,9 @@
     <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
         android:allowBackup="true"
@@ -46,6 +49,21 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="com.snoopy.pixelquest.ACTION_CHECK_TASK" />
+                <action android:name="com.snoopy.pixelquest.ACTION_SWITCH_CATEGORY" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Task Notification & Alarm Receiver -->
+        <receiver
+            android:name=".TaskNotificationReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.snoopy.pixelquest.ACTION_COMPLETE_TASK" />
+                <action android:name="com.snoopy.pixelquest.ACTION_SHOW_REMINDER" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>
         </receiver>
 
@@ -62,7 +80,7 @@
             android:grantUriPermissions="true">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths"></meta-data>
+                android:resource="@xml/file_paths" />
         </provider>
     </application>
 

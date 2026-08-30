@@ -1,5 +1,6 @@
 package com.snoopy.pixelquest
 
+import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
@@ -12,11 +13,12 @@ import java.util.Locale
 
 class TaskWidgetService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory {
-        return TaskWidgetFactory(this.applicationContext)
+        val appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+        return TaskWidgetFactory(this.applicationContext, appWidgetId)
     }
 }
 
-class TaskWidgetFactory(private val context: Context) : RemoteViewsService.RemoteViewsFactory {
+class TaskWidgetFactory(private val context: Context, private val appWidgetId: Int) : RemoteViewsService.RemoteViewsFactory {
 
     private data class WidgetTaskItem(
         val id: String,
@@ -35,7 +37,13 @@ class TaskWidgetFactory(private val context: Context) : RemoteViewsService.Remot
         try {
             val prefs = context.getSharedPreferences("PixelQuestData", Context.MODE_PRIVATE)
             val jsonString = prefs.getString("pixel_quest_data", null) ?: return
-            val selectedCatId = prefs.getString("widget_selected_cat_id", "all") ?: "all"
+            
+            // Read per-widget selected category ID
+            val selectedCatId = if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+                prefs.getString("widget_cat_$appWidgetId", "all") ?: "all"
+            } else {
+                "all"
+            }
 
             val rootObj = JSONObject(jsonString)
             val tasksArray = rootObj.optJSONArray("tasks") ?: return
@@ -97,15 +105,19 @@ class TaskWidgetFactory(private val context: Context) : RemoteViewsService.Remot
                     val completions = t.optJSONObject("completions")
                     val isDone = completions?.optBoolean(todayStr, false) ?: false
 
-                    itemList.add(
-                        WidgetTaskItem(
-                            id = t.optString("id", ""),
-                            title = t.optString("title", "Task"),
-                            points = t.optInt("points", 10),
-                            isCompleted = isDone,
-                            dateKey = todayStr
+                    // CRITICAL FIX: Only display INCOMPLETE/PENDING tasks for today!
+                    // When checked, the task disappears from the active widget and resets on the next day!
+                    if (!isDone) {
+                        itemList.add(
+                            WidgetTaskItem(
+                                id = t.optString("id", ""),
+                                title = t.optString("title", "Task"),
+                                points = t.optInt("points", 10),
+                                isCompleted = false,
+                                dateKey = todayStr
+                            )
                         )
-                    )
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -129,18 +141,13 @@ class TaskWidgetFactory(private val context: Context) : RemoteViewsService.Remot
 
         views.setTextViewText(R.id.widget_task_title, item.title)
         views.setTextViewText(R.id.widget_task_points, "+${item.points} 🪙")
-
-        if (item.isCompleted) {
-            views.setTextViewText(R.id.widget_task_checkbox, "✓")
-            views.setFloat(R.id.widget_task_title, "setAlpha", 0.5f)
-        } else {
-            views.setTextViewText(R.id.widget_task_checkbox, "")
-            views.setFloat(R.id.widget_task_title, "setAlpha", 1.0f)
-        }
+        views.setTextViewText(R.id.widget_task_checkbox, "")
+        views.setFloat(R.id.widget_task_title, "setAlpha", 1.0f)
 
         val fillInIntent = Intent().apply {
             putExtra(WidgetCheckReceiver.EXTRA_TASK_ID, item.id)
             putExtra(WidgetCheckReceiver.EXTRA_DATE_KEY, item.dateKey)
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
         }
         views.setOnClickFillInIntent(R.id.widget_task_checkbox, fillInIntent)
         views.setOnClickFillInIntent(R.id.widget_task_title, fillInIntent)
