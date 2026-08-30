@@ -1039,11 +1039,18 @@ html, body {
   padding: 14px;
 }
 
-/* Master Quest Dashboard Styling */
+/* Master Quest Dashboard Styling (Collapsible Accordion) */
+.master-quest-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
 .master-quest-container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .master-cat-group {
@@ -1057,9 +1064,15 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 10px 12px;
   background: #192133;
-  border-bottom: 1px solid #28334b;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.1s ease;
+}
+
+.master-cat-header:hover, .master-cat-header:active {
+  background: #202b42;
 }
 
 .master-cat-title {
@@ -1068,13 +1081,39 @@ html, body {
   gap: 6px;
   font-weight: 600;
   font-size: 0.85rem;
+  flex: 1;
+}
+
+.master-cat-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accordion-chevron {
+  font-size: 0.8rem;
+  color: var(--mana-cyan);
+  transition: transform 0.2s ease;
+  display: inline-block;
+  font-weight: bold;
+}
+
+.master-cat-group.collapsed .accordion-chevron {
+  transform: rotate(-90deg);
+  color: var(--text-muted);
+}
+
+.master-cat-group.collapsed .master-quest-list {
+  display: none;
 }
 
 .master-quest-list {
   display: flex;
   flex-direction: column;
-  padding: 6px;
+  padding: 8px;
   gap: 6px;
+  border-top: 1px solid #28334b;
+  background: #0f1422;
 }
 
 .master-quest-item {

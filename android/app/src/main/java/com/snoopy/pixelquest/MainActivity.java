@@ -16,11 +16,27 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(StorageBridgePlugin.class);
         super.onCreate(savedInstanceState);
+        setupBridge();
+    }
 
-        // Direct Native JavascriptInterface as an ironclad fail-safe bridge
+    @Override
+    public void onStart() {
+        super.onStart();
+        setupBridge();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        setupBridge();
+        // Refresh widgets whenever app resumes
+        StorageBridgePlugin.Companion.refreshAllWidgets(this);
+    }
+
+    private void setupBridge() {
         try {
-            WebView webView = getBridge().getWebView();
-            if (webView != null) {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                WebView webView = getBridge().getWebView();
                 webView.addJavascriptInterface(new AndroidStorageBridgeInterface(this), "AndroidStorageBridge");
             }
         } catch (Exception e) {

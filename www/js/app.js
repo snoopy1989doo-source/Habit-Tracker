@@ -5,6 +5,16 @@
 document.addEventListener('DOMContentLoaded', async () => {
   // App State
   let db = await StorageBridge.getData();
+  // Immediate sync on boot to guarantee native SharedPreferences & Widget are live
+  await StorageBridge.setData(db);
+
+  // Sync to native whenever user switches out of app (e.g. goes to home screen)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      StorageBridge.setData(db);
+    }
+  });
+
   let selectedDate = new Date(); // Current date view
   let calendarMonth = new Date(); // Calendar month view
   let activeTab = 'tabQuests';
@@ -1303,8 +1313,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    let html = '';
-    categories.forEach(cat => {
+    let toolbarHtml = `
+      <div class="master-quest-toolbar">
+        <button class="pixel-btn text-btn-sm" id="expandAllCatBtn">▾ ขยายทั้งหมด</button>
+        <button class="pixel-btn text-btn-sm" id="collapseAllCatBtn">▴ ยุบทั้งหมด</button>
+      </div>
+    `;
+
+    let html = toolbarHtml;
+    categories.forEach((cat, index) => {
       const catTasks = allTasks.filter(t => !t.archived && (t.categoryId === cat.id || (!t.categoryId && cat.id === categories[0].id)));
       
       let tasksHtml = '';
@@ -1345,15 +1362,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
       }
 
+      // Default first category open, others collapsed to save vertical space
+      const isCollapsed = index > 0;
+
       html += `
-        <div class="master-cat-group" data-cat-id="${cat.id}">
+        <div class="master-cat-group ${isCollapsed ? 'collapsed' : ''}" data-cat-id="${cat.id}">
           <div class="master-cat-header">
             <div class="master-cat-title" style="color: ${cat.color || '#ff6b00'};">
               <span>${cat.icon || '🏷️'}</span>
               <span>${escapeHtml(cat.name)}</span>
               <span class="text-xs text-muted">(${catTasks.length} เควสต์)</span>
             </div>
-            <button class="pixel-btn text-btn-sm" data-action="master-add-task">+ เพิ่ม</button>
+            <div class="master-cat-header-right">
+              <button class="pixel-btn text-btn-sm" data-action="master-add-task">+ เพิ่ม</button>
+              <span class="accordion-chevron">▼</span>
+            </div>
           </div>
           <div class="master-quest-list">
             ${tasksHtml}
@@ -1364,9 +1387,37 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     container.innerHTML = html;
 
-    // Attach event listeners for Master Dashboard
+    // Accordion Header Click to toggle collapse
+    container.querySelectorAll('.master-cat-header').forEach(header => {
+      header.addEventListener('click', (e) => {
+        // If clicking on "+ เพิ่ม" button, don't toggle accordion
+        if (e.target.closest('[data-action="master-add-task"]')) return;
+        const group = header.closest('.master-cat-group');
+        group.classList.toggle('collapsed');
+        PixelAudio.playClickSound();
+      });
+    });
+
+    // Toolbar Expand / Collapse All
+    const expandAllBtn = document.getElementById('expandAllCatBtn');
+    const collapseAllBtn = document.getElementById('collapseAllCatBtn');
+    if (expandAllBtn) {
+      expandAllBtn.addEventListener('click', () => {
+        container.querySelectorAll('.master-cat-group').forEach(g => g.classList.remove('collapsed'));
+        PixelAudio.playClickSound();
+      });
+    }
+    if (collapseAllBtn) {
+      collapseAllBtn.addEventListener('click', () => {
+        container.querySelectorAll('.master-cat-group').forEach(g => g.classList.add('collapsed'));
+        PixelAudio.playClickSound();
+      });
+    }
+
+    // Attach event listeners for Master Dashboard Actions
     container.querySelectorAll('[data-action="master-add-task"]').forEach(btn => {
       btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const group = e.target.closest('.master-cat-group');
         const catId = group.getAttribute('data-cat-id');
         openAddTaskModal(catId);

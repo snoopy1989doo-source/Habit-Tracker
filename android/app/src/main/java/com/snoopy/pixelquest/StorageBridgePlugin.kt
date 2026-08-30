@@ -36,7 +36,10 @@ class StorageBridgePlugin : Plugin() {
     @PluginMethod
     fun setData(call: PluginCall) {
         try {
-            val jsonValue = call.getString("value") ?: ""
+            val jsonValue = call.getString("value") 
+                ?: call.getString("data") 
+                ?: call.data.optString("value", "")
+
             val context = context
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             
@@ -56,15 +59,19 @@ class StorageBridgePlugin : Plugin() {
 
     companion object {
         fun refreshAllWidgets(context: Context) {
-            val widgetManager = AppWidgetManager.getInstance(context)
-            val widgetComponent = ComponentName(context, TaskWidgetProvider::class.java)
-            val widgetIds = widgetManager.getAppWidgetIds(widgetComponent)
+            try {
+                val widgetManager = AppWidgetManager.getInstance(context)
+                val widgetComponent = ComponentName(context, TaskWidgetProvider::class.java)
+                val widgetIds = widgetManager.getAppWidgetIds(widgetComponent)
 
-            if (widgetIds.isNotEmpty()) {
-                for (appWidgetId in widgetIds) {
-                    TaskWidgetProvider.updateAppWidgetInstance(context, widgetManager, appWidgetId)
+                if (widgetIds.isNotEmpty()) {
+                    for (appWidgetId in widgetIds) {
+                        TaskWidgetProvider.updateAppWidgetInstance(context, widgetManager, appWidgetId)
+                    }
+                    widgetManager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list_view)
                 }
-                widgetManager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list_view)
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

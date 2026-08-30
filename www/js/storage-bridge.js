@@ -87,7 +87,7 @@ window.StorageBridge = (function () {
     try {
       let rawJson = null;
 
-      // 1. Try Direct Android Interface (100% reliable on native Android)
+      // 1. Try Direct Android Interface
       const androidBridge = getDirectAndroidBridge();
       if (androidBridge) {
         rawJson = androidBridge.getRawData();
@@ -114,7 +114,7 @@ window.StorageBridge = (function () {
 
       const parsed = JSON.parse(rawJson);
 
-      return {
+      const normalized = {
         tasks: Array.isArray(parsed.tasks) ? parsed.tasks : defaultData.tasks,
         categories: Array.isArray(parsed.categories) ? parsed.categories : defaultData.categories,
         rewards: Array.isArray(parsed.rewards) ? parsed.rewards : defaultData.rewards,
@@ -124,6 +124,11 @@ window.StorageBridge = (function () {
         garden: Array.isArray(parsed.garden) ? parsed.garden : [],
         achievements: Object.assign({}, defaultData.achievements, parsed.achievements || {})
       };
+
+      // Always ensure native layer is immediately in sync on boot
+      setData(normalized);
+
+      return normalized;
     } catch (err) {
       console.error('StorageBridge.getData error:', err);
       return JSON.parse(JSON.stringify(defaultData));
@@ -137,16 +142,16 @@ window.StorageBridge = (function () {
     try {
       const jsonStr = JSON.stringify(dataObj);
 
-      // Save to localStorage
+      // 1. Save to localStorage
       localStorage.setItem(STORAGE_KEY, jsonStr);
 
-      // Save to Direct Android Bridge (Native SharedPreferences)
+      // 2. Save to Direct Android Bridge (Native SharedPreferences)
       const androidBridge = getDirectAndroidBridge();
       if (androidBridge) {
         androidBridge.setRawData(jsonStr);
       }
 
-      // Save to Capacitor Plugin
+      // 3. Save to Capacitor Plugin
       const capPlugin = getCapacitorPlugin();
       if (capPlugin && typeof capPlugin.setData === 'function') {
         await capPlugin.setData({ value: jsonStr });
