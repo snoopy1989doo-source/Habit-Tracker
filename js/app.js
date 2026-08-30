@@ -225,26 +225,45 @@ document.addEventListener('DOMContentLoaded', async () => {
   const navItems = document.querySelectorAll('.nav-item');
   const tabPages = document.querySelectorAll('.tab-page');
 
+  function switchTab(targetTab) {
+    if (!targetTab || activeTab === targetTab) return;
+
+    // 1. Instant 0ms visual class toggle
+    navItems.forEach(n => {
+      if (n.getAttribute('data-tab') === targetTab) {
+        n.classList.add('active');
+      } else {
+        n.classList.remove('active');
+      }
+    });
+
+    tabPages.forEach(p => {
+      if (p.id === targetTab) {
+        p.classList.add('active-tab');
+      } else {
+        p.classList.remove('active-tab');
+      }
+    });
+
+    activeTab = targetTab;
+    PixelAudio.playClickSound();
+
+    // 2. Render tab contents
+    requestAnimationFrame(() => {
+      renderCurrentTab();
+    });
+  }
+
   navItems.forEach(btn => {
-    btn.addEventListener('click', () => {
+    // pointerdown fires immediately on physical screen touch with 0ms delay
+    btn.addEventListener('pointerdown', (e) => {
       const targetTab = btn.getAttribute('data-tab');
-      if (activeTab === targetTab) return;
-
-      // 1. Instant 0ms visual class toggle (zero lag response)
-      navItems.forEach(n => n.classList.remove('active'));
-      tabPages.forEach(p => p.classList.remove('active-tab'));
-
-      btn.classList.add('active');
-      const targetPage = document.getElementById(targetTab);
-      if (targetPage) targetPage.classList.add('active-tab');
-
-      activeTab = targetTab;
-      PixelAudio.playClickSound();
-
-      // 2. Defer heavy data rendering to next animation frame
-      requestAnimationFrame(() => {
-        renderCurrentTab();
-      });
+      switchTab(targetTab);
+    });
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetTab = btn.getAttribute('data-tab');
+      switchTab(targetTab);
     });
   });
 
@@ -1117,7 +1136,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         html += `
           <div class="reward-card" data-id="${r.id}">
-            <button class="reward-edit-btn" data-action="edit-reward" title="แก้ไขรางวัล">✏️</button>
+            <div class="reward-actions-top">
+              <button class="reward-edit-btn" data-action="edit-reward" title="แก้ไขรางวัล">✏️</button>
+              <button class="reward-delete-btn" data-action="delete-reward" title="ลบรางวัล">🗑️</button>
+            </div>
             <div class="reward-icon">${r.icon || '🎁'}</div>
             <div class="reward-name">${escapeHtml(r.name)}</div>
             <div class="reward-cost">${r.cost} 🪙</div>
@@ -1136,6 +1158,15 @@ document.addEventListener('DOMContentLoaded', async () => {
           const card = e.target.closest('.reward-card');
           const rId = card.getAttribute('data-id');
           openEditRewardModal(rId);
+        });
+      });
+
+      rewardsGrid.querySelectorAll('[data-action="delete-reward"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const card = e.target.closest('.reward-card');
+          const rId = card.getAttribute('data-id');
+          deleteReward(rId);
         });
       });
 
@@ -1177,7 +1208,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('rewardCost').value = reward.cost;
     document.getElementById('rewardIcon').value = reward.icon || '🎁';
     if (rewardModalTitle) rewardModalTitle.textContent = 'แก้ไขรางวัล';
+    
+    const deleteBtn = document.getElementById('deleteRewardBtn');
+    if (deleteBtn) deleteBtn.classList.remove('hidden');
+
     rewardModal.classList.remove('hidden');
+  }
+
+  function deleteReward(rewardId) {
+    const reward = db.rewards.find(r => r.id === rewardId);
+    if (!reward) return;
+    const name = reward.name || 'รางวัลนี้';
+
+    showPixelConfirm('ลบรางวัล', `คุณต้องการลบรางวัล "${name}" หรือไม่?`, async () => {
+      db.rewards = (db.rewards || []).filter(r => r.id !== rewardId);
+      await saveData();
+      rewardModal.classList.add('hidden');
+      renderRewards();
+      showToast(`ลบรางวัล "${name}" เรียบร้อย`, '🗑️');
+    });
   }
 
   function redeemReward(rewardId) {
@@ -1212,6 +1261,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const addRewardBtn = document.getElementById('addRewardBtn');
   const closeRewardModalBtn = document.getElementById('closeRewardModalBtn');
   const cancelRewardBtn = document.getElementById('cancelRewardBtn');
+  const deleteRewardBtn = document.getElementById('deleteRewardBtn');
 
   if (addRewardBtn) {
     addRewardBtn.addEventListener('click', () => {
@@ -1220,7 +1270,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('rewardCost').value = 100;
       document.getElementById('rewardIcon').value = '🎁';
       if (rewardModalTitle) rewardModalTitle.textContent = 'เพิ่มรางวัลใหม่';
+      if (deleteRewardBtn) deleteRewardBtn.classList.add('hidden');
       rewardModal.classList.remove('hidden');
+    });
+  }
+
+  if (deleteRewardBtn) {
+    deleteRewardBtn.addEventListener('click', () => {
+      const rewardId = document.getElementById('rewardId').value;
+      if (rewardId) {
+        deleteReward(rewardId);
+      }
     });
   }
 

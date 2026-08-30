@@ -982,10 +982,16 @@ html, body {
   position: relative;
 }
 
-.reward-edit-btn {
+.reward-actions-top {
   position: absolute;
   top: 6px;
   right: 6px;
+  display: flex;
+  gap: 4px;
+  z-index: 2;
+}
+
+.reward-edit-btn, .reward-delete-btn {
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -993,10 +999,19 @@ html, body {
   font-size: 0.9rem;
   padding: 2px;
   line-height: 1;
+  transition: transform 0.1s ease, color 0.1s ease;
+}
+
+.reward-edit-btn:active, .reward-delete-btn:active {
+  transform: scale(0.9);
 }
 
 .reward-edit-btn:hover {
   color: var(--flame-gold);
+}
+
+.reward-delete-btn:hover {
+  color: var(--danger-red);
 }
 
 .reward-icon {

@@ -1,12 +1,13 @@
 /**
- * PIXEL QUEST - AUDIO SYNTHESIZER
- * Web Audio API Retro Chiptune Sound Generator (Zero External Assets)
+ * PIXEL QUEST - ZERO-LATENCY AUDIO SYNTHESIZER
+ * Hardware-accelerated non-blocking Chiptune Sound Generator
  */
 
 window.PixelAudio = (function () {
   let audioCtx = null;
+  let isUnlocked = false;
 
-  function getContext() {
+  function initContext() {
     if (!audioCtx) {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       if (AudioContextClass) {
@@ -14,35 +15,39 @@ window.PixelAudio = (function () {
       }
     }
     if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume();
+      audioCtx.resume().catch(() => {});
     }
-    return audioCtx;
+    isUnlocked = true;
   }
 
+  // Pre-unlock AudioContext on first user interaction so subsequent clicks have 0ms latency
+  window.addEventListener('pointerdown', () => {
+    if (!isUnlocked) initContext();
+  }, { once: true, passive: true });
+
   function playTone(freq, type, duration, delay = 0, gainVal = 0.1) {
-    const ctx = getContext();
-    if (!ctx) return;
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
 
-    setTimeout(() => {
-      try {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+    try {
+      const startTime = audioCtx.currentTime + delay;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
 
-        osc.type = type || 'square';
-        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      osc.type = type || 'square';
+      osc.frequency.setValueAtTime(freq, startTime);
 
-        gain.gain.setValueAtTime(gainVal, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      gain.gain.setValueAtTime(gainVal, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 
-        osc.connect(gain);
-        gain.connect(ctx.destination);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
 
-        osc.start();
-        osc.stop(ctx.currentTime + duration);
-      } catch (e) {
-        // Ignore audio playback context errors
-      }
-    }, delay * 1000);
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    } catch (e) {}
   }
 
   function playCheckSound() {
@@ -57,7 +62,7 @@ window.PixelAudio = (function () {
   }
 
   function playClickSound() {
-    playTone(800, 'square', 0.03, 0, 0.05);
+    playTone(800, 'square', 0.03, 0, 0.04);
   }
 
   function playLevelUpSound() {
