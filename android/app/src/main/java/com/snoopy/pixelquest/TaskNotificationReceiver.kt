@@ -129,6 +129,9 @@ class TaskNotificationReceiver : BroadcastReceiver() {
                     break
                 }
             }
+
+            // Reschedule next occurrences
+            TaskNotificationHelper.rescheduleAll(context)
         } catch (e: Exception) {
             e.printStackTrace()
         }

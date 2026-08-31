@@ -5,8 +5,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <application
         android:allowBackup="true"
@@ -53,10 +55,10 @@
             </intent-filter>
         </receiver>
 
-        <!-- Task Notification & Alarm Receiver -->
+        <!-- Task Notification & Alarm Receiver (exported=true for OS wakeups and boot) -->
         <receiver
             android:name=".TaskNotificationReceiver"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="com.snoopy.pixelquest.ACTION_COMPLETE_TASK" />
                 <action android:name="com.snoopy.pixelquest.ACTION_SHOW_REMINDER" />
