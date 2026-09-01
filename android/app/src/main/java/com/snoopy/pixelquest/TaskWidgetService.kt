@@ -48,7 +48,7 @@ class TaskWidgetFactory(private val context: Context, private val appWidgetId: I
             val rootObj = JSONObject(jsonString)
             val tasksArray = rootObj.optJSONArray("tasks") ?: return
 
-            val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.US)
             val todayStr = sdfKey.format(Date())
             val calendar = Calendar.getInstance()
             val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK) - 1 // 0 = Sun, 1 = Mon ...

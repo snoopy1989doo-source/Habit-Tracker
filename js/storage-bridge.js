@@ -48,6 +48,8 @@ window.StorageBridge = (function () {
     pointsBalance: 50,
     focusHistory: [],
     garden: [],
+    penaltiesProcessed: {},
+    penaltyEnabled: true,
     achievements: {
       first_task: { unlocked: false, unlockedAt: null },
       focus_5_sessions: { unlocked: false, unlockedAt: null },
@@ -122,6 +124,8 @@ window.StorageBridge = (function () {
         pointsBalance: typeof parsed.pointsBalance === 'number' ? parsed.pointsBalance : 0,
         focusHistory: Array.isArray(parsed.focusHistory) ? parsed.focusHistory : [],
         garden: Array.isArray(parsed.garden) ? parsed.garden : [],
+        penaltiesProcessed: parsed.penaltiesProcessed && typeof parsed.penaltiesProcessed === 'object' ? parsed.penaltiesProcessed : {},
+        penaltyEnabled: parsed.penaltyEnabled !== false,
         achievements: Object.assign({}, defaultData.achievements, parsed.achievements || {})
       };
 

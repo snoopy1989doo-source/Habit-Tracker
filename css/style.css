@@ -1420,8 +1420,60 @@ html, body {
   border-radius: 6px;
   color: var(--text-primary);
   font-size: 0.85rem;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  font-weight: 500;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.6);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  animation: toastIn 0.25s ease-out;
+}
+
+/* Pixel Toggle Switch */
+.pixel-toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.pixel-toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #242e42;
+  transition: 0.2s;
+  border-radius: 13px;
+  border: 2px solid #3b4866;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #8fa0c2;
+  transition: 0.2s;
+  border-radius: 50%;
+}
+
+.pixel-toggle-switch input:checked + .toggle-slider {
+  background-color: #10b981;
+  border-color: #059669;
+}
+
+.pixel-toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(22px);
+  background-color: #ffffff;
 }

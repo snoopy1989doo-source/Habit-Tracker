@@ -42,7 +42,7 @@ class TaskNotificationReceiver : BroadcastReceiver() {
 
     private fun handleCompleteTask(context: Context, intent: Intent) {
         val taskId = intent.getStringExtra(EXTRA_TASK_ID) ?: return
-        val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         val dateKey = intent.getStringExtra(EXTRA_DATE_KEY) ?: sdfKey.format(Date())
         val notifId = intent.getIntExtra(EXTRA_NOTIF_ID, taskId.hashCode())
 
@@ -108,7 +108,7 @@ class TaskNotificationReceiver : BroadcastReceiver() {
             val rootObj = JSONObject(jsonString)
             val tasksArray = rootObj.optJSONArray("tasks") ?: return
 
-            val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.US)
             val todayStr = sdfKey.format(Date())
 
             for (i in 0 until tasksArray.length()) {

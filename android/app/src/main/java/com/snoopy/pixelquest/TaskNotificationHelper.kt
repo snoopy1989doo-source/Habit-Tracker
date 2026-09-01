@@ -48,7 +48,7 @@ object TaskNotificationHelper {
         createNotificationChannel(context)
 
         val prefs = context.getSharedPreferences("PixelQuestData", Context.MODE_PRIVATE)
-        val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         val todayStr = sdfKey.format(Date())
 
         // 1. Ensure only 1 notification per task per day!
@@ -122,7 +122,7 @@ object TaskNotificationHelper {
             val tasksArray = rootObj.optJSONArray("tasks") ?: return
 
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-            val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.US)
             val todayStr = sdfKey.format(Date())
 
             val nowMillis = System.currentTimeMillis()
@@ -243,7 +243,7 @@ object TaskNotificationHelper {
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
             }
-            val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.US)
             val checkDateStr = sdfKey.format(nextCal.time)
 
             if (isDueOnDate(task, recType, nextCal, checkDateStr)) {

@@ -182,7 +182,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkAchievements();
   }
 
+  function migrateCompletionsKeys() {
+    let changed = false;
+    (db.tasks || []).forEach(t => {
+      if (t.completions && typeof t.completions === 'object') {
+        Object.keys(t.completions).forEach(k => {
+          if (k.startsWith('256')) {
+            const yearBE = parseInt(k.slice(0, 4));
+            const yearAD = yearBE - 543;
+            const newKey = `${yearAD}${k.slice(4)}`;
+            if (t.completions[k]) {
+              t.completions[newKey] = true;
+              delete t.completions[k];
+              changed = true;
+            }
+          }
+        });
+      }
+    });
+    return changed;
+  }
+
   function processMissedTaskPenalties() {
+    if (db.penaltyEnabled === false) return;
     if (!db.penaltiesProcessed) db.penaltiesProcessed = {};
     let totalDeducted = 0;
     let modified = false;
@@ -190,16 +212,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     db.tasks.forEach(t => {
       if (t.archived) return;
 
-      for (let i = 1; i <= 7; i++) {
+      let createdStr = t.createdAtKey;
+      if (!createdStr && t.createdAt) {
+        createdStr = formatDateKey(new Date(t.createdAt));
+      }
+      if (!createdStr) createdStr = formatDateKey(new Date());
+
+      // Check up to the past 3 days
+      for (let i = 1; i <= 3; i++) {
         const pastDate = new Date();
         pastDate.setDate(pastDate.getDate() - i);
         const pastKey = formatDateKey(pastDate);
 
+        // Never penalize for dates before the task was created!
+        if (pastKey < createdStr) continue;
+
         if (isTaskDueOnDate(t, pastDate)) {
           const penaltyKey = `${t.id}_${pastKey}`;
-          const isDone = t.completions && t.completions[pastKey];
 
-          if (!isDone && !db.penaltiesProcessed[penaltyKey]) {
+          // Check both standard AD and BE keys for robustness
+          const beKey = `${parseInt(pastKey.slice(0, 4)) + 543}${pastKey.slice(4)}`;
+          const isDone = !!(
+            (t.completions && t.completions[pastKey]) ||
+            (t.completions && t.completions[beKey])
+          );
+
+          if (isDone) {
+            // Task was completed! Mark processed so it NEVER deducts!
+            db.penaltiesProcessed[penaltyKey] = true;
+          } else if (!db.penaltiesProcessed[penaltyKey]) {
             const points = t.points || 10;
             db.pointsBalance = Math.max(0, (db.pointsBalance || 0) - points);
             db.penaltiesProcessed[penaltyKey] = true;
@@ -212,7 +253,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (modified) {
       if (totalDeducted > 0) {
-        showToast(`ถูกหัก -${totalDeducted} 🪙 เนื่องจากไม่ได้ทำเควสต์ในวันที่ผ่านมา`, '⚠️');
+        showToast(`หัก -${totalDeducted} 🪙 เนื่องจากไม่ได้ทำเควสต์ที่ค้างไว้`, '⚠️');
       }
       saveData();
     }
@@ -1359,6 +1400,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderMasterQuestDashboard();
     renderAchievements();
     renderCategoryManageList();
+
+    const penaltyToggle = document.getElementById('penaltyToggleSwitch');
+    if (penaltyToggle) {
+      penaltyToggle.checked = db.penaltyEnabled !== false;
+      penaltyToggle.onchange = async () => {
+        db.penaltyEnabled = penaltyToggle.checked;
+        await saveData();
+        showToast(db.penaltyEnabled ? 'เปิดระบบหักแต้มแล้ว' : 'ปิดระบบหักแต้มแล้ว', '⚔️');
+      };
+    }
   }
 
   function renderMasterQuestDashboard() {
@@ -1659,6 +1710,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Initial Instant Boot
+  if (migrateCompletionsKeys()) {
+    saveData();
+  }
   updateDateDisplay();
   renderCurrentTab();
   
