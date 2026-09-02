@@ -736,14 +736,15 @@ html, body {
 .focus-controls {
   width: 100%;
   display: flex;
+  gap: 10px;
   justify-content: center;
 }
 
 .focus-controls button {
-  width: 100%;
-  max-width: 240px;
+  flex: 1;
+  max-width: 170px;
   padding: 12px;
-  font-size: 1rem;
+  font-size: 0.95rem;
 }
 
 .focus-info-box {

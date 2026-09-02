@@ -24,7 +24,7 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         setupBridge();
 
-        // Create Task Notification Channel & Reschedule reminders
+        // Create Task & Focus Notification Channels & Reschedule reminders
         TaskNotificationHelper.INSTANCE.createNotificationChannel(this);
         TaskNotificationHelper.INSTANCE.rescheduleAll(this);
 
@@ -95,6 +95,106 @@ public class MainActivity extends BridgeActivity {
             } catch (Exception e) {
                 e.printStackTrace();
                 return false;
+            }
+        }
+
+        @JavascriptInterface
+        public void startFocusTimer(int selectedMins, int remainingSeconds, double endTimeMsDouble) {
+            try {
+                long endTimeMs = (long) endTimeMsDouble;
+                SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+                prefs.edit()
+                    .putBoolean("focus_is_running", true)
+                    .putBoolean("focus_is_paused", false)
+                    .putInt("focus_selected_mins", selectedMins)
+                    .putInt("focus_remaining_seconds", remainingSeconds)
+                    .putLong("focus_end_time_ms", endTimeMs)
+                    .commit();
+
+                TaskNotificationHelper.INSTANCE.showFocusRunningNotification(context, selectedMins, endTimeMs);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        @JavascriptInterface
+        public void pauseFocusTimer(int remainingSeconds) {
+            try {
+                SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+                int selectedMins = prefs.getInt("focus_selected_mins", 25);
+                prefs.edit()
+                    .putBoolean("focus_is_running", true)
+                    .putBoolean("focus_is_paused", true)
+                    .putInt("focus_remaining_seconds", remainingSeconds)
+                    .commit();
+
+                TaskNotificationHelper.INSTANCE.showFocusPausedNotification(context, selectedMins, remainingSeconds);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        @JavascriptInterface
+        public void resumeFocusTimer(int remainingSeconds, double endTimeMsDouble) {
+            try {
+                long endTimeMs = (long) endTimeMsDouble;
+                SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+                int selectedMins = prefs.getInt("focus_selected_mins", 25);
+                prefs.edit()
+                    .putBoolean("focus_is_running", true)
+                    .putBoolean("focus_is_paused", false)
+                    .putInt("focus_remaining_seconds", remainingSeconds)
+                    .putLong("focus_end_time_ms", endTimeMs)
+                    .commit();
+
+                TaskNotificationHelper.INSTANCE.showFocusRunningNotification(context, selectedMins, endTimeMs);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        @JavascriptInterface
+        public void stopFocusTimer(boolean isSuccess, int selectedMins) {
+            try {
+                SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+                prefs.edit()
+                    .putBoolean("focus_is_running", false)
+                    .putBoolean("focus_is_paused", false)
+                    .putInt("focus_remaining_seconds", 0)
+                    .putLong("focus_end_time_ms", 0L)
+                    .commit();
+
+                if (isSuccess) {
+                    int pointsEarned = (int) Math.round(selectedMins * 0.6);
+                    TaskNotificationHelper.INSTANCE.showFocusCompleteNotification(context, selectedMins, pointsEarned);
+                } else {
+                    TaskNotificationHelper.INSTANCE.cancelFocusNotification(context);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        @JavascriptInterface
+        public String getFocusTimerState() {
+            try {
+                SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+                boolean isRunning = prefs.getBoolean("focus_is_running", false);
+                boolean isPaused = prefs.getBoolean("focus_is_paused", false);
+                int selectedMins = prefs.getInt("focus_selected_mins", 25);
+                int remainingSeconds = prefs.getInt("focus_remaining_seconds", selectedMins * 60);
+                long endTimeMs = prefs.getLong("focus_end_time_ms", 0L);
+
+                org.json.JSONObject obj = new org.json.JSONObject();
+                obj.put("isRunning", isRunning);
+                obj.put("isPaused", isPaused);
+                obj.put("selectedMins", selectedMins);
+                obj.put("remainingSeconds", remainingSeconds);
+                obj.put("endTimeMs", endTimeMs);
+                return obj.toString();
+            } catch (Exception e) {
+                e.printStackTrace();
+                return "{}";
             }
         }
     }

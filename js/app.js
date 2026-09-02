@@ -8,11 +8,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Immediate sync on boot to guarantee native SharedPreferences & Widget are live
   await StorageBridge.setData(db);
 
-  // Sync to native whenever user switches out of app (e.g. goes to home screen)
+  // Sync to/from native whenever user switches out of / into app
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
       StorageBridge.setData(db);
+    } else if (document.visibilityState === 'visible') {
+      syncFocusStateFromNative();
     }
+  });
+
+  window.addEventListener('focus', () => {
+    syncFocusStateFromNative();
   });
 
   let selectedDate = new Date(); // Current date view
@@ -26,6 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let focusTotalSeconds = 25 * 60;
   let focusRemainingSeconds = 25 * 60;
   let isFocusRunning = false;
+  let isFocusPaused = false;
   let focusEndTime = null;
   let selectedFocusMins = 25;
 
@@ -139,6 +146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const focusTimerDigits = document.getElementById('focusTimerDigits');
   const focusStatusBadge = document.getElementById('focusStatusBadge');
   const startFocusBtn = document.getElementById('startFocusBtn');
+  const pauseResumeFocusBtn = document.getElementById('pauseResumeFocusBtn');
   const giveupFocusBtn = document.getElementById('giveupFocusBtn');
   const expectedPointsVal = document.getElementById('expectedPointsVal');
   const expectedTreeVal = document.getElementById('expectedTreeVal');
@@ -815,6 +823,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  if (pauseResumeFocusBtn) {
+    pauseResumeFocusBtn.addEventListener('click', () => {
+      if (!isFocusRunning) return;
+      if (isFocusPaused) {
+        resumeFocusTimer();
+      } else {
+        pauseFocusTimer();
+      }
+    });
+  }
+
   if (giveupFocusBtn) {
     giveupFocusBtn.addEventListener('click', () => {
       showPixelConfirm('ยกเลิกสมาธิ', 'คุณแน่ใจหรือว่าต้องการยกเลิกการสะสมสมาธิรอบนี้?', () => {
@@ -825,16 +844,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function startFocusTimer() {
     isFocusRunning = true;
+    isFocusPaused = false;
     focusEndTime = Date.now() + focusRemainingSeconds * 1000;
 
     startFocusBtn.classList.add('hidden');
+    if (pauseResumeFocusBtn) {
+      pauseResumeFocusBtn.classList.remove('hidden');
+      pauseResumeFocusBtn.textContent = '⏸️ พักชั่วคราว';
+    }
     giveupFocusBtn.classList.remove('hidden');
     focusStatusBadge.textContent = 'FOCUSED & GROWING...';
     focusStatusBadge.style.color = '#00e5ff';
 
     PixelAudio.playClickSound();
 
+    // Start Native Ongoing Notification with Live Chronometer Countdown
+    StorageBridge.startFocusTimer(selectedFocusMins, focusRemainingSeconds, focusEndTime);
+
+    if (focusInterval) clearInterval(focusInterval);
     focusInterval = setInterval(() => {
+      if (isFocusPaused) return;
       const now = Date.now();
       const remainingMs = focusEndTime - now;
       focusRemainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
@@ -847,13 +876,73 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 1000);
   }
 
+  function pauseFocusTimer() {
+    if (!isFocusRunning || isFocusPaused) return;
+    isFocusPaused = true;
+    if (focusInterval) {
+      clearInterval(focusInterval);
+      focusInterval = null;
+    }
+
+    if (pauseResumeFocusBtn) {
+      pauseResumeFocusBtn.textContent = '▶️ เดินต่อ';
+    }
+    focusStatusBadge.textContent = 'PAUSED';
+    focusStatusBadge.style.color = '#f59e0b';
+
+    PixelAudio.playClickSound();
+    StorageBridge.pauseFocusTimer(focusRemainingSeconds);
+    showToast('⏸️ พักการนับเวลาชั่วคราว', '⏱️');
+    updateFocusDisplay();
+  }
+
+  function resumeFocusTimer() {
+    if (!isFocusRunning || !isFocusPaused) return;
+    isFocusPaused = false;
+    focusEndTime = Date.now() + focusRemainingSeconds * 1000;
+
+    if (pauseResumeFocusBtn) {
+      pauseResumeFocusBtn.textContent = '⏸️ พักชั่วคราว';
+    }
+    focusStatusBadge.textContent = 'FOCUSED & GROWING...';
+    focusStatusBadge.style.color = '#00e5ff';
+
+    PixelAudio.playClickSound();
+    StorageBridge.resumeFocusTimer(focusRemainingSeconds, focusEndTime);
+    showToast('▶️ เดินเวลานับสมาธิต่อ', '⏱️');
+
+    if (focusInterval) clearInterval(focusInterval);
+    focusInterval = setInterval(() => {
+      if (isFocusPaused) return;
+      const now = Date.now();
+      const remainingMs = focusEndTime - now;
+      focusRemainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+
+      updateFocusDisplay();
+
+      if (focusRemainingSeconds <= 0) {
+        stopFocusTimer(true);
+      }
+    }, 1000);
+    updateFocusDisplay();
+  }
+
   async function stopFocusTimer(isSuccess) {
-    clearInterval(focusInterval);
-    focusInterval = null;
+    if (focusInterval) {
+      clearInterval(focusInterval);
+      focusInterval = null;
+    }
     isFocusRunning = false;
+    isFocusPaused = false;
 
     startFocusBtn.classList.remove('hidden');
+    if (pauseResumeFocusBtn) {
+      pauseResumeFocusBtn.classList.add('hidden');
+      pauseResumeFocusBtn.textContent = '⏸️ พักชั่วคราว';
+    }
     giveupFocusBtn.classList.add('hidden');
+
+    StorageBridge.stopFocusTimer(isSuccess, selectedFocusMins);
 
     if (isSuccess) {
       const pointsEarned = Math.round(selectedFocusMins * 0.6);
@@ -895,6 +984,66 @@ document.addEventListener('DOMContentLoaded', async () => {
     focusStatusBadge.textContent = 'READY TO FOCUS';
     focusStatusBadge.style.color = 'var(--text-muted)';
     updateFocusDisplay();
+  }
+
+  async function syncFocusStateFromNative() {
+    try {
+      const state = await StorageBridge.getFocusTimerState();
+      if (!state) return;
+
+      if (state.isRunning) {
+        isFocusRunning = true;
+        isFocusPaused = !!state.isPaused;
+        selectedFocusMins = state.selectedMins || 25;
+        focusTotalSeconds = selectedFocusMins * 60;
+
+        startFocusBtn.classList.add('hidden');
+        if (pauseResumeFocusBtn) {
+          pauseResumeFocusBtn.classList.remove('hidden');
+          pauseResumeFocusBtn.textContent = isFocusPaused ? '▶️ เดินต่อ' : '⏸️ พักชั่วคราว';
+        }
+        giveupFocusBtn.classList.remove('hidden');
+
+        if (isFocusPaused) {
+          focusRemainingSeconds = state.remainingSeconds || (selectedFocusMins * 60);
+          focusStatusBadge.textContent = 'PAUSED';
+          focusStatusBadge.style.color = '#f59e0b';
+          if (focusInterval) {
+            clearInterval(focusInterval);
+            focusInterval = null;
+          }
+        } else {
+          focusEndTime = state.endTimeMs || (Date.now() + (state.remainingSeconds || 60) * 1000);
+          const now = Date.now();
+          focusRemainingSeconds = Math.max(0, Math.ceil((focusEndTime - now) / 1000));
+          focusStatusBadge.textContent = 'FOCUSED & GROWING...';
+          focusStatusBadge.style.color = '#00e5ff';
+
+          if (focusRemainingSeconds <= 0) {
+            stopFocusTimer(true);
+            return;
+          }
+
+          if (focusInterval) clearInterval(focusInterval);
+          focusInterval = setInterval(() => {
+            if (isFocusPaused) return;
+            const curNow = Date.now();
+            focusRemainingSeconds = Math.max(0, Math.ceil((focusEndTime - curNow) / 1000));
+            updateFocusDisplay();
+            if (focusRemainingSeconds <= 0) {
+              stopFocusTimer(true);
+            }
+          }, 1000);
+        }
+        updateFocusDisplay();
+      } else if (isFocusRunning) {
+        // Was running in web but stopped/cancelled in notification
+        db = await StorageBridge.getData();
+        stopFocusTimer(false);
+      }
+    } catch (e) {
+      console.error('syncFocusStateFromNative error:', e);
+    }
   }
 
   function updateFocusDisplay() {
@@ -1715,6 +1864,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   updateDateDisplay();
   renderCurrentTab();
+  syncFocusStateFromNative();
   
   setTimeout(() => {
     processMissedTaskPenalties();

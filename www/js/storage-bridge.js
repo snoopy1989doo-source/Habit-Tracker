@@ -168,9 +168,95 @@ window.StorageBridge = (function () {
     }
   }
 
+  async function startFocusTimer(selectedMins, remainingSeconds, endTimeMs) {
+    try {
+      const androidBridge = getDirectAndroidBridge();
+      if (androidBridge && typeof androidBridge.startFocusTimer === 'function') {
+        androidBridge.startFocusTimer(selectedMins, remainingSeconds, endTimeMs);
+        return;
+      }
+      const capPlugin = getCapacitorPlugin();
+      if (capPlugin && typeof capPlugin.startFocusTimer === 'function') {
+        await capPlugin.startFocusTimer({ selectedMins, remainingSeconds, endTimeMs });
+      }
+    } catch (e) {
+      console.error('startFocusTimer error:', e);
+    }
+  }
+
+  async function pauseFocusTimer(remainingSeconds) {
+    try {
+      const androidBridge = getDirectAndroidBridge();
+      if (androidBridge && typeof androidBridge.pauseFocusTimer === 'function') {
+        androidBridge.pauseFocusTimer(remainingSeconds);
+        return;
+      }
+      const capPlugin = getCapacitorPlugin();
+      if (capPlugin && typeof capPlugin.pauseFocusTimer === 'function') {
+        await capPlugin.pauseFocusTimer({ remainingSeconds });
+      }
+    } catch (e) {
+      console.error('pauseFocusTimer error:', e);
+    }
+  }
+
+  async function resumeFocusTimer(remainingSeconds, endTimeMs) {
+    try {
+      const androidBridge = getDirectAndroidBridge();
+      if (androidBridge && typeof androidBridge.resumeFocusTimer === 'function') {
+        androidBridge.resumeFocusTimer(remainingSeconds, endTimeMs);
+        return;
+      }
+      const capPlugin = getCapacitorPlugin();
+      if (capPlugin && typeof capPlugin.resumeFocusTimer === 'function') {
+        await capPlugin.resumeFocusTimer({ remainingSeconds, endTimeMs });
+      }
+    } catch (e) {
+      console.error('resumeFocusTimer error:', e);
+    }
+  }
+
+  async function stopFocusTimer(isSuccess, selectedMins) {
+    try {
+      const androidBridge = getDirectAndroidBridge();
+      if (androidBridge && typeof androidBridge.stopFocusTimer === 'function') {
+        androidBridge.stopFocusTimer(isSuccess, selectedMins);
+        return;
+      }
+      const capPlugin = getCapacitorPlugin();
+      if (capPlugin && typeof capPlugin.stopFocusTimer === 'function') {
+        await capPlugin.stopFocusTimer({ isSuccess, selectedMins });
+      }
+    } catch (e) {
+      console.error('stopFocusTimer error:', e);
+    }
+  }
+
+  async function getFocusTimerState() {
+    try {
+      const androidBridge = getDirectAndroidBridge();
+      if (androidBridge && typeof androidBridge.getFocusTimerState === 'function') {
+        const json = androidBridge.getFocusTimerState();
+        return JSON.parse(json || '{}');
+      }
+      const capPlugin = getCapacitorPlugin();
+      if (capPlugin && typeof capPlugin.getFocusTimerState === 'function') {
+        return await capPlugin.getFocusTimerState();
+      }
+    } catch (e) {
+      console.error('getFocusTimerState error:', e);
+    }
+    return null;
+  }
+
   return {
     getData,
     setData,
-    defaultData
+    defaultData,
+    startFocusTimer,
+    pauseFocusTimer,
+    resumeFocusTimer,
+    stopFocusTimer,
+    getFocusTimerState
   };
 })();

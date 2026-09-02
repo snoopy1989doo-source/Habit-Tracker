@@ -23,26 +23,59 @@ object TaskNotificationHelper {
     const val CHANNEL_NAME = "เควสต์ & เตือนความจำ (Tasks & Habits)"
     const val GROUP_KEY = "com.snoopy.pixelquest.TASKS_GROUP"
 
+    const val FOCUS_CHANNEL_ID = "pixel_quest_focus"
+    const val FOCUS_CHANNEL_NAME = "⏱️ นับเวลาสมาธิ (Focus Timer)"
+
+    const val FOCUS_DONE_CHANNEL_ID = "pixel_quest_focus_done"
+    const val FOCUS_DONE_CHANNEL_NAME = "🎉 สมาธิสำเร็จ (Focus Complete)"
+
+    const val NOTIF_ID_FOCUS = 99999
+    const val NOTIF_ID_FOCUS_DONE = 99998
+
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val importance = NotificationManager.IMPORTANCE_HIGH
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            // 1. Task Reminders Channel
             val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             val audioAttributes = AudioAttributes.Builder()
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                 .build()
 
-            val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance).apply {
+            val taskChannel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH).apply {
                 description = "การแจ้งเตือนเควสต์และกิจวัตรประจำวันของ Pixel Quest"
                 enableLights(true)
                 enableVibration(true)
                 setShowBadge(true)
                 setSound(defaultSoundUri, audioAttributes)
             }
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
+            notificationManager.createNotificationChannel(taskChannel)
+
+            // 2. Ongoing Focus Timer Channel (Low importance so no beeps during active countdown)
+            val focusChannel = NotificationChannel(FOCUS_CHANNEL_ID, FOCUS_CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW).apply {
+                description = "การนับเวลาถอยหลังโหมดสมาธิของ Pixel Quest"
+                enableLights(false)
+                enableVibration(false)
+                setShowBadge(false)
+            }
+            notificationManager.createNotificationChannel(focusChannel)
+
+            // 3. Focus Completed Channel (High importance with sound and vibration)
+            val focusDoneChannel = NotificationChannel(FOCUS_DONE_CHANNEL_ID, FOCUS_DONE_CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "แจ้งเตือนเมื่อสะสมสมาธิครบกำหนดเวลา"
+                enableLights(true)
+                enableVibration(true)
+                setShowBadge(true)
+                setSound(defaultSoundUri, audioAttributes)
+            }
+            notificationManager.createNotificationChannel(focusDoneChannel)
         }
     }
+
+    // =========================================================================
+    // TASK NOTIFICATIONS
+    // =========================================================================
 
     fun postTaskNotification(context: Context, taskId: String, title: String, note: String, points: Int, recText: String) {
         createNotificationChannel(context)
@@ -51,20 +84,14 @@ object TaskNotificationHelper {
         val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         val todayStr = sdfKey.format(Date())
 
-        // 1. Ensure only 1 notification per task per day!
         val lastNotifiedDate = prefs.getString("notif_last_$taskId", null)
-        if (lastNotifiedDate == todayStr) {
-            // Already notified today -> do not duplicate!
-            return
-        }
+        if (lastNotifiedDate == todayStr) return
 
-        // Record that we have notified for today
         prefs.edit().putString("notif_last_$taskId", todayStr).apply()
 
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val notifId = taskId.hashCode()
 
-        // PendingIntent when tapping notification body -> Launch App
         val appIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -73,7 +100,6 @@ object TaskNotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // PendingIntent for [ ✔ ทำแล้ว ] Action Button
         val completeIntent = Intent(context, TaskNotificationReceiver::class.java).apply {
             action = TaskNotificationReceiver.ACTION_COMPLETE_TASK
             putExtra(TaskNotificationReceiver.EXTRA_TASK_ID, taskId)
@@ -124,7 +150,6 @@ object TaskNotificationHelper {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
             val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.US)
             val todayStr = sdfKey.format(Date())
-
             val nowMillis = System.currentTimeMillis()
 
             for (i in 0 until tasksArray.length()) {
@@ -150,10 +175,8 @@ object TaskNotificationHelper {
                 val recurrence = t.optJSONObject("recurrence")
                 val recType = recurrence?.optString("type") ?: "daily"
 
-                // Calculate next target time (either later today or on next due date)
                 val targetCal = getNextDueCalendar(t, recType, hour, minute, nowMillis, todayStr, prefs) ?: continue
 
-                // Only schedule future alarms (NEVER fire immediately on app launch!)
                 if (targetCal.timeInMillis > nowMillis) {
                     val alarmIntent = Intent(context, TaskNotificationReceiver::class.java).apply {
                         action = TaskNotificationReceiver.ACTION_SHOW_REMINDER
@@ -193,7 +216,6 @@ object TaskNotificationHelper {
                             )
                         }
                     } catch (se: SecurityException) {
-                        // Fallback if exact alarms restricted
                         alarmManager.set(
                             AlarmManager.RTC_WAKEUP,
                             targetCal.timeInMillis,
@@ -226,15 +248,12 @@ object TaskNotificationHelper {
             set(Calendar.MILLISECOND, 0)
         }
 
-        // 1. If time today is in the future AND we have not notified today yet:
         if (cal.timeInMillis > nowMillis && lastNotifiedDate != todayStr) {
             if (isDueOnDate(task, recType, cal, todayStr)) {
                 return cal
             }
         }
 
-        // 2. Otherwise (time today is already passed or already notified today):
-        // Search next 7 days for the next due occurrence
         for (dayOffset in 1..7) {
             val nextCal = Calendar.getInstance().apply {
                 add(Calendar.DAY_OF_YEAR, dayOffset)
@@ -255,7 +274,7 @@ object TaskNotificationHelper {
     }
 
     private fun isDueOnDate(task: JSONObject, recType: String, cal: Calendar, dateStr: String): Boolean {
-        val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK) - 1 // 0=Sun, 1=Mon...
+        val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK) - 1
         val dayOfMonth = cal.get(Calendar.DAY_OF_MONTH)
 
         if (recType == "daily") {
@@ -278,5 +297,190 @@ object TaskNotificationHelper {
             return createdAtKey.isEmpty() || createdAtKey == dateStr
         }
         return false
+    }
+
+    // =========================================================================
+    // FOCUS REALM ONGOING COUNTDOWN & NOTIFICATIONS
+    // =========================================================================
+
+    fun showFocusRunningNotification(context: Context, selectedMins: Int, endTimeMillis: Long) {
+        createNotificationChannel(context)
+
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        // Tap notification -> open app
+        val appIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val appPendingIntent = PendingIntent.getActivity(
+            context, 5001, appIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Action [ ⏸️ พักชั่วคราว ]
+        val pauseIntent = Intent(context, TaskNotificationReceiver::class.java).apply {
+            action = TaskNotificationReceiver.ACTION_FOCUS_PAUSE
+        }
+        val pausePendingIntent = PendingIntent.getBroadcast(
+            context, 5002, pauseIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        )
+
+        // Action [ ✖ ยกเลิก / ยอมแพ้ ]
+        val giveupIntent = Intent(context, TaskNotificationReceiver::class.java).apply {
+            action = TaskNotificationReceiver.ACTION_FOCUS_GIVEUP
+        }
+        val giveupPendingIntent = PendingIntent.getBroadcast(
+            context, 5003, giveupIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        )
+
+        val expectedPoints = Math.round(selectedMins * 0.6).toInt()
+
+        val builder = NotificationCompat.Builder(context, FOCUS_CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("⏱️ กำลังสะสมสมาธิ (${selectedMins} นาที)")
+            .setContentText("กำลังปลูกต้นไม้พิกเซล... แตะเพื่อเปิดแอป (+${expectedPoints} 🪙)")
+            .setUsesChronometer(true)
+            .setChronometerCountDown(true)
+            .setWhen(endTimeMillis)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .setContentIntent(appPendingIntent)
+            .addAction(android.R.drawable.ic_media_pause, "⏸️ พักชั่วคราว", pausePendingIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "✖ ยกเลิก", giveupPendingIntent)
+
+        notificationManager.notify(NOTIF_ID_FOCUS, builder.build())
+
+        // Also schedule exact Alarm for when countdown expires (so completion fires even if phone locked)
+        scheduleFocusCompletionAlarm(context, selectedMins, endTimeMillis)
+    }
+
+    fun showFocusPausedNotification(context: Context, selectedMins: Int, remainingSeconds: Int) {
+        createNotificationChannel(context)
+
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        val appIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val appPendingIntent = PendingIntent.getActivity(
+            context, 5001, appIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Action [ ▶️ เดินต่อ ]
+        val resumeIntent = Intent(context, TaskNotificationReceiver::class.java).apply {
+            action = TaskNotificationReceiver.ACTION_FOCUS_RESUME
+        }
+        val resumePendingIntent = PendingIntent.getBroadcast(
+            context, 5004, resumeIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        )
+
+        // Action [ ✖ ยกเลิก ]
+        val giveupIntent = Intent(context, TaskNotificationReceiver::class.java).apply {
+            action = TaskNotificationReceiver.ACTION_FOCUS_GIVEUP
+        }
+        val giveupPendingIntent = PendingIntent.getBroadcast(
+            context, 5003, giveupIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        )
+
+        val mins = remainingSeconds / 60
+        val secs = remainingSeconds % 60
+        val timeFormatted = String.format(Locale.US, "%02d:%02d", mins, secs)
+
+        val builder = NotificationCompat.Builder(context, FOCUS_CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("⏸️ สมาธิพักชั่วคราว (เหลืออีก $timeFormatted)")
+            .setContentText("กด \"▶ เดินต่อ\" เพื่อนับเวลาและปลูกต้นไม้ต่อ")
+            .setUsesChronometer(false)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setContentIntent(appPendingIntent)
+            .addAction(android.R.drawable.ic_media_play, "▶ เดินต่อ", resumePendingIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "✖ ยกเลิก", giveupPendingIntent)
+
+        notificationManager.notify(NOTIF_ID_FOCUS, builder.build())
+
+        // Cancel the completion alarm while paused
+        cancelFocusCompletionAlarm(context)
+    }
+
+    fun cancelFocusNotification(context: Context) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(NOTIF_ID_FOCUS)
+        cancelFocusCompletionAlarm(context)
+    }
+
+    fun showFocusCompleteNotification(context: Context, selectedMins: Int, pointsEarned: Int) {
+        createNotificationChannel(context)
+
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(NOTIF_ID_FOCUS)
+
+        val appIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val appPendingIntent = PendingIntent.getActivity(
+            context, 5005, appIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val builder = NotificationCompat.Builder(context, FOCUS_DONE_CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("🎉 สะสมสมาธิสำเร็จ! (+${pointsEarned} 🪙)")
+            .setContentText("คุณปลูกต้นไม้ใหม่ในสวนพิกเซลเรียบร้อยแล้ว (${selectedMins} นาที)")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setAutoCancel(true)
+            .setContentIntent(appPendingIntent)
+
+        notificationManager.notify(NOTIF_ID_FOCUS_DONE, builder.build())
+    }
+
+    private fun scheduleFocusCompletionAlarm(context: Context, selectedMins: Int, endTimeMillis: Long) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+        val alarmIntent = Intent(context, TaskNotificationReceiver::class.java).apply {
+            action = TaskNotificationReceiver.ACTION_FOCUS_EXPIRED
+            putExtra(TaskNotificationReceiver.EXTRA_FOCUS_MINS, selectedMins)
+            data = Uri.parse("pixelquest://focus/alarm/complete")
+        }
+        val alarmPendingIntent = PendingIntent.getBroadcast(
+            context, 5006, alarmIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        )
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                alarmManager.setAlarmClock(
+                    AlarmManager.AlarmClockInfo(endTimeMillis, alarmPendingIntent),
+                    alarmPendingIntent
+                )
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    endTimeMillis,
+                    alarmPendingIntent
+                )
+            }
+        } catch (e: Exception) {
+            alarmManager.set(AlarmManager.RTC_WAKEUP, endTimeMillis, alarmPendingIntent)
+        }
+    }
+
+    private fun cancelFocusCompletionAlarm(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+        val alarmIntent = Intent(context, TaskNotificationReceiver::class.java).apply {
+            action = TaskNotificationReceiver.ACTION_FOCUS_EXPIRED
+            data = Uri.parse("pixelquest://focus/alarm/complete")
+        }
+        val alarmPendingIntent = PendingIntent.getBroadcast(
+            context, 5006, alarmIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        )
+        alarmManager.cancel(alarmPendingIntent)
     }
 }
