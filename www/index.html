@@ -172,8 +172,8 @@
       <!-- TAB 3: PIXEL GARDEN & CALENDAR -->
       <section id="tabGarden" class="tab-page">
         <div class="garden-header pixel-box">
-          <h2 class="pixel-text-emerald">🏡 PIXEL GARDEN & STAMP CALENDAR</h2>
-          <p>สวนพิกเซลและปฏิทินบันทึกความสม่ำเสมอของวินัย</p>
+          <h2 class="pixel-text-emerald">🏡 PIXEL GARDEN REALM</h2>
+          <p>โลกสวนประจำเดือนของคุณ เติบโตทีละต้นจากทุก Focus ที่ทำสำเร็จ</p>
         </div>
 
         <div class="garden-stats-grid">
@@ -189,20 +189,35 @@
 
         <!-- View Switcher Tabs -->
         <div class="garden-subtabs margin-bottom-sm">
-          <button class="pixel-btn subtab-btn active" id="subtabGardenBtn">🌱 สวนพิกเซล</button>
+          <button class="pixel-btn subtab-btn active" id="subtabGardenBtn">🌱 โลกสวน</button>
           <button class="pixel-btn subtab-btn" id="subtabCalendarBtn">📅 ปฏิทิน & กราฟวินัย</button>
         </div>
 
         <!-- Subview 1: Garden Grid -->
         <div id="subviewGarden" class="subview-page">
-          <div class="garden-grid" id="gardenGrid">
-            <!-- Dynamic grown tree tiles -->
+          <div class="garden-world pixel-box" id="gardenWorld">
+            <div class="world-sky-glow"></div>
+            <div class="world-cloud cloud-one">☁️</div>
+            <div class="world-cloud cloud-two">☁️</div>
+            <div class="world-mountains">▲ ▲ ▲</div>
+            <div class="world-ground">
+              <div class="world-path"></div>
+              <div class="world-water">≈≈≈</div>
+              <div class="world-trees" id="gardenGrid"></div>
+              <div class="world-insects" id="gardenInsects" aria-label="แมลงในสวน"></div>
+              <div class="world-sign">🌿 <span id="gardenMonthLabel">สวนเดือนนี้</span></div>
+            </div>
+          </div>
+
+          <div class="garden-history-panel pixel-box-sm">
+            <div class="history-panel-title"><span>📜 สวนย้อนหลัง</span><span class="text-muted text-sm">เก็บไว้ดูได้ทุกเดือน</span></div>
+            <div class="garden-history-list" id="gardenHistoryList"></div>
           </div>
 
           <div class="empty-state hidden" id="emptyGardenState">
             <div class="pixel-icon-large">🌳</div>
             <h3>สวนของคุณยังว่างเปล่า</h3>
-            <p>เข้าใช้งาน Focus Realm เพื่อปลูกต้นไม้/ดอกไม้แรกของคุณได้เลย!</p>
+            <p>เข้าใช้งาน Focus Realm เพื่อปลูกต้นไม้แรกของเดือนนี้ได้เลย!</p>
           </div>
         </div>
 

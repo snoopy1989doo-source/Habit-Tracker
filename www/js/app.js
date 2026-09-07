@@ -5,6 +5,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
   // App State
   let db = await StorageBridge.getData();
+  ensureCurrentGardenMonth();
   // Immediate sync on boot to guarantee native SharedPreferences & Widget are live
   await StorageBridge.setData(db);
 
@@ -26,6 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let activeTab = 'tabQuests';
   let activeCategoryFilter = 'all';
   let activeGardenSubtab = 'garden';
+  let viewingGardenMonthKey = null;
 
   // Focus Timer State
   let focusInterval = null;
@@ -160,6 +162,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
     const dd = String(dateObj.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function getMonthKey(dateObj = new Date()) {
+    return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  function monthLabel(monthKey) {
+    const [year, month] = String(monthKey || '').split('-').map(Number);
+    const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    return year && month ? `${thaiMonths[month - 1]} ${year + 543}` : 'เดือนก่อนหน้า';
+  }
+
+  function ensureCurrentGardenMonth() {
+    const currentKey = getMonthKey();
+    if (!Array.isArray(db.gardenArchives)) db.gardenArchives = [];
+    if (!db.gardenMonthKey) {
+      const newestTree = Array.isArray(db.garden) && db.garden.length ? db.garden.reduce((latest, tree) => String(tree.plantedAt || '') > String(latest.plantedAt || '') ? tree : latest, db.garden[0]) : null;
+      db.gardenMonthKey = newestTree && newestTree.plantedAt ? getMonthKey(new Date(newestTree.plantedAt)) : currentKey;
+    }
+    if (db.gardenMonthKey === currentKey) return;
+
+    if (Array.isArray(db.garden) && db.garden.length) {
+      const oldKey = db.gardenMonthKey;
+      const grouped = db.garden.reduce((groups, tree) => {
+        const key = tree.monthKey || (tree.plantedAt ? getMonthKey(new Date(tree.plantedAt)) : oldKey);
+        (groups[key] ||= []).push({ ...tree, monthKey: key });
+        return groups;
+      }, {});
+      Object.entries(grouped).forEach(([key, trees]) => {
+        const existing = db.gardenArchives.find(a => a.monthKey === key);
+        if (existing) existing.trees = existing.trees.concat(trees);
+        else db.gardenArchives.push({ monthKey: key, trees });
+      });
+    }
+    db.garden = [];
+    db.gardenMonthKey = currentKey;
+    StorageBridge.setData(db);
   }
 
   function isSameDay(d1, d2) {
@@ -957,7 +996,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         treeIcon: randomFlora.icon,
         stage: 4,
         durationMinutes: selectedFocusMins,
-        plantedAt: new Date().toISOString()
+        plantedAt: new Date().toISOString(),
+        monthKey: getMonthKey()
       };
 
       if (!db.garden) db.garden = [];
@@ -1148,6 +1188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function renderGardenGrid() {
+    ensureCurrentGardenMonth();
     const gardenGrid = document.getElementById('gardenGrid');
     const emptyGardenState = document.getElementById('emptyGardenState');
     const totalTreesCount = document.getElementById('totalTreesCount');
@@ -1155,8 +1196,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (!gardenGrid) return;
 
-    const trees = db.garden || [];
-    const totalMins = (db.focusHistory || []).reduce((acc, curr) => acc + (curr.durationMinutes || 0), 0);
+    const currentKey = db.gardenMonthKey || getMonthKey();
+    const displayKey = viewingGardenMonthKey || currentKey;
+    const archive = (db.gardenArchives || []).find(a => a.monthKey === displayKey);
+    const trees = displayKey === currentKey ? (db.garden || []).filter(t => (t.monthKey || getMonthKey(new Date(t.plantedAt || 0))) === currentKey) : ((archive && archive.trees) || []);
+    const totalMins = displayKey === currentKey ? (db.focusHistory || []).filter(f => getMonthKey(new Date(f.completedAt || 0)) === currentKey).reduce((acc, curr) => acc + (curr.durationMinutes || 0), 0) : trees.reduce((acc, curr) => acc + (curr.durationMinutes || 0), 0);
 
     if (totalTreesCount) totalTreesCount.textContent = trees.length;
     if (totalFocusMins) totalFocusMins.textContent = totalMins;
@@ -1164,20 +1208,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (trees.length === 0) {
       gardenGrid.innerHTML = '';
       if (emptyGardenState) emptyGardenState.classList.remove('hidden');
-      return;
+    } else {
+      if (emptyGardenState) emptyGardenState.classList.add('hidden');
     }
 
-    if (emptyGardenState) emptyGardenState.classList.add('hidden');
-
     let html = '';
-    trees.forEach(t => {
+    trees.forEach((t, index) => {
       const match = FLORA_CATALOG.find(f => f.type === t.treeType);
       const icon = t.treeIcon || (match ? match.icon : '🌳');
       const name = t.treeName || (match ? match.name : 'Pixel Plant');
       const dateStr = t.plantedAt ? new Date(t.plantedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : '';
 
+      const positions = [[12, 25], [38, 14], [62, 28], [22, 56], [49, 48], [75, 58], [7, 70], [67, 8]];
+      const pos = positions[index % positions.length];
       html += `
-        <div class="tree-tile">
+        <div class="tree-tile" style="left:${pos[0]}%;top:${pos[1]}%;">
           <div class="tree-tile-icon">${icon}</div>
           <div class="tree-tile-name">${escapeHtml(name)}</div>
           <div class="tree-tile-date">${dateStr}</div>
@@ -1186,6 +1231,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     gardenGrid.innerHTML = html;
+
+    const insects = document.getElementById('gardenInsects');
+    if (insects) {
+      const focusCount = (db.focusHistory || []).filter(f => getMonthKey(new Date(f.completedAt || 0)) === currentKey).length;
+      const insectPool = ['🦋', '🐝', '🐞', '🪲', '🐛'];
+      insects.innerHTML = Array.from({ length: Math.min(7, Math.max(0, focusCount)) }, (_, i) => {
+        const left = 10 + ((i * 17 + focusCount * 3) % 80);
+        const top = 10 + ((i * 29 + focusCount * 5) % 72);
+        return `<span class="garden-insect" style="left:${left}%;top:${top}%;animation-delay:-${i * .7}s">${insectPool[i % insectPool.length]}</span>`;
+      }).join('');
+    }
+    const monthLabelEl = document.getElementById('gardenMonthLabel');
+    if (monthLabelEl) monthLabelEl.textContent = `สวน ${monthLabel(displayKey)}${displayKey === currentKey ? '' : ' · ประวัติ'}`;
+    renderGardenHistory();
+  }
+
+  function renderGardenHistory() {
+    const list = document.getElementById('gardenHistoryList');
+    if (!list) return;
+    const archives = Array.isArray(db.gardenArchives) ? db.gardenArchives.slice().sort((a, b) => String(b.monthKey).localeCompare(String(a.monthKey))) : [];
+    const currentKey = db.gardenMonthKey || getMonthKey();
+    list.innerHTML = `<div class="garden-history-item ${!viewingGardenMonthKey ? 'active' : ''}" data-garden-month="current"><strong>${monthLabel(currentKey)}</strong><span>${(db.garden || []).length} ต้น · เดือนนี้</span></div>` +
+      (archives.length ? archives.map(a => `<div class="garden-history-item ${viewingGardenMonthKey === a.monthKey ? 'active' : ''}" data-garden-month="${a.monthKey}"><strong>${monthLabel(a.monthKey)}</strong><span>${(a.trees || []).length} ต้น · ดูย้อนหลัง</span></div>`).join('') : '<div class="text-muted text-sm">ยังไม่มีสวนเดือนก่อนหน้า</div>');
+    list.querySelectorAll('[data-garden-month]').forEach(item => item.addEventListener('click', () => {
+      viewingGardenMonthKey = item.dataset.gardenMonth === 'current' ? null : item.dataset.gardenMonth;
+      renderGardenGrid();
+    }));
   }
 
   // Render Month Calendar & Discipline Chart

@@ -1,7 +1,11 @@
 node_modules/
 .gradle/
 android/.gradle/
+android/.gradle-cache*/
 android/app/build/
+android/**/build-alt/
+android/build-alt.init.gradle
+android/build-output.txt
 android/build/
 android/local.properties
 android/captures/
