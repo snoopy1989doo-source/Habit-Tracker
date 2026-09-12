@@ -83,7 +83,9 @@ class TaskWidgetFactory(private val context: Context, private val appWidgetId: I
                 if (recType == "daily") {
                     isDue = true
                 } else if (recType == "none") {
-                    if (createdDateStr.isEmpty() || createdDateStr == todayStr || createdAt.startsWith(todayStr)) {
+                    val oneTimeDate = recurrence?.optString("dateKey", "") ?: ""
+                    val dueDate = if (oneTimeDate.isNotEmpty()) oneTimeDate else createdDateStr
+                    if (dueDate.isEmpty() || dueDate == todayStr || (oneTimeDate.isEmpty() && createdAt.startsWith(todayStr))) {
                         isDue = true
                     }
                 } else if (recType == "weekly") {

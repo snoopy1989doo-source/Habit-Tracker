@@ -1,6 +1,7 @@
 Add-Type -AssemblyName System.Drawing
 $logoPath = "C:\Users\HUAWEI\.gemini\antigravity\brain\15e3a543-79a2-4fcf-a269-e68622c39ead\app_logo.jpg"
-$resDir = "d:\Snoopy\WEB APP\Habit-Tracker\android\app\src\main\res"
+$projectRoot = Split-Path -Parent $PSScriptRoot
+$resDir = Join-Path $projectRoot "android\app\src\main\res"
 
 if (Test-Path $logoPath) {
     $img = [System.Drawing.Image]::FromFile($logoPath)

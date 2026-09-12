@@ -1,7 +1,7 @@
 {
   "name": "pixel-quest",
   "version": "1.0.0",
-  "description": "Pixel Quest - Task/Habit Tracker & Focus Pomodoro with Native Android Home Screen Widget",
+  "description": "Pixel Quest - Focus quests, reminders, and a monthly pixel garden",
   "main": "www/index.html",
   "scripts": {
     "start": "npx serve www",
@@ -9,7 +9,7 @@
     "cap:build": "npx cap copy && npx cap open android"
   },
   "keywords": [
-    "habit-tracker",
+    "pixel-quest",
     "pomodoro",
     "pixel-art",
     "android-widget",

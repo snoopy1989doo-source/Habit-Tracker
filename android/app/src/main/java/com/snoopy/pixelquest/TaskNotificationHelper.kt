@@ -240,6 +240,32 @@ object TaskNotificationHelper {
     ): Calendar? {
         val taskId = task.optString("id", "")
         val lastNotifiedDate = prefs.getString("notif_last_$taskId", null)
+        val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+
+        if (recType == "none") {
+            val recurrence = task.optJSONObject("recurrence")
+            val oneTimeDate = recurrence?.optString("dateKey", "") ?: ""
+            val fallbackDate = task.optString("createdAtKey", "")
+            val targetDate = if (oneTimeDate.isNotEmpty()) oneTimeDate else fallbackDate
+            if (targetDate.isNotEmpty() && lastNotifiedDate != targetDate) {
+                try {
+                    val parsedDate = sdfKey.parse(targetDate)
+                    if (parsedDate != null) {
+                        val oneTimeCal = Calendar.getInstance().apply {
+                            time = parsedDate
+                            set(Calendar.HOUR_OF_DAY, hour)
+                            set(Calendar.MINUTE, minute)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }
+                        return if (oneTimeCal.timeInMillis > nowMillis) oneTimeCal else null
+                    }
+                } catch (_: Exception) {
+                    return null
+                }
+            }
+            return null
+        }
 
         val cal = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, hour)
@@ -293,8 +319,10 @@ object TaskNotificationHelper {
             val dateNum = recurrence?.optInt("dateOfMonth", 1) ?: 1
             return dateNum == dayOfMonth
         } else if (recType == "none") {
+            val recurrence = task.optJSONObject("recurrence")
+            val dateKey = recurrence?.optString("dateKey", "") ?: ""
             val createdAtKey = task.optString("createdAtKey", "")
-            return createdAtKey.isEmpty() || createdAtKey == dateStr
+            return (if (dateKey.isNotEmpty()) dateKey else createdAtKey).let { it.isEmpty() || it == dateStr }
         }
         return false
     }

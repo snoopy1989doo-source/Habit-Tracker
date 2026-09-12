@@ -87,6 +87,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const taskRecurrenceType = document.getElementById('taskRecurrenceType');
   const weeklyDaysGroup = document.getElementById('weeklyDaysGroup');
   const monthlyDateGroup = document.getElementById('monthlyDateGroup');
+  const oneTimeDateGroup = document.getElementById('oneTimeDateGroup');
   const taskEmojiChips = document.getElementById('taskEmojiChips');
 
   const rewardModal = document.getElementById('rewardModal');
@@ -462,7 +463,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const rec = task.recurrence || { type: 'daily' };
     if (rec.type === 'none') {
-      return dateStr === createdStr;
+      return dateStr === (rec.dateKey || createdStr);
     } else if (rec.type === 'daily') {
       return true;
     } else if (rec.type === 'weekly') {
@@ -670,6 +671,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const val = taskRecurrenceType.value;
       weeklyDaysGroup.classList.toggle('hidden', val !== 'weekly');
       monthlyDateGroup.classList.toggle('hidden', val !== 'monthly');
+      oneTimeDateGroup.classList.toggle('hidden', val !== 'none');
     });
   }
 
@@ -699,6 +701,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     taskRecurrenceType.value = 'daily';
     weeklyDaysGroup.classList.add('hidden');
     monthlyDateGroup.classList.add('hidden');
+    oneTimeDateGroup.classList.add('hidden');
+    document.getElementById('taskOneTimeDate').value = formatDateKey(new Date());
     document.getElementById('taskReminderTime').value = '';
     taskModalTitle.textContent = 'เพิ่มเควสต์ใหม่';
     taskModal.classList.remove('hidden');
@@ -725,6 +729,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     weeklyDaysGroup.classList.toggle('hidden', rec.type !== 'weekly');
     monthlyDateGroup.classList.toggle('hidden', rec.type !== 'monthly');
+    oneTimeDateGroup.classList.toggle('hidden', rec.type !== 'none');
 
     if (rec.type === 'weekly' && Array.isArray(rec.days)) {
       document.querySelectorAll('#weeklyDaysGroup input[type="checkbox"]').forEach(cb => {
@@ -735,6 +740,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (rec.type === 'monthly' && rec.dateOfMonth) {
       document.getElementById('taskMonthDate').value = rec.dateOfMonth;
     }
+    document.getElementById('taskOneTimeDate').value = rec.dateKey || task.createdAtKey || formatDateKey(new Date());
 
     document.getElementById('taskReminderTime').value = task.reminderTime || '';
     taskModalTitle.textContent = 'แก้ไขเควสต์';
@@ -756,7 +762,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const recType = taskRecurrenceType.value;
       const reminderTime = document.getElementById('taskReminderTime').value;
 
-      let recurrence = { type: recType, days: [], dateOfMonth: null };
+      let recurrence = { type: recType, days: [], dateOfMonth: null, dateKey: null };
       if (recType === 'weekly') {
         const days = [];
         document.querySelectorAll('#weeklyDaysGroup input[type="checkbox"]:checked').forEach(cb => {
@@ -765,6 +771,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         recurrence.days = days;
       } else if (recType === 'monthly') {
         recurrence.dateOfMonth = parseInt(document.getElementById('taskMonthDate').value) || 1;
+      } else if (recType === 'none') {
+        recurrence.dateKey = document.getElementById('taskOneTimeDate').value || todayStr;
       }
 
       const todayStr = formatDateKey(new Date());
@@ -1663,7 +1671,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         catTasks.forEach(task => {
           const rec = task.recurrence || { type: 'daily' };
           let recText = '🔁 ทุกวัน';
-          if (rec.type === 'none') recText = '🕒 ไม่ซ้ำ';
+          if (rec.type === 'none') recText = `🕒 ไม่ซ้ำ (${rec.dateKey || task.createdAtKey || 'วันนี้'})`;
           else if (rec.type === 'weekly') {
             const dayNames = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
             const daysList = (rec.days || []).map(d => dayNames[d]).join(', ');

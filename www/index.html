@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Pixel Quest - Task & Habit Tracker</title>
+  <title>Pixel Quest</title>
   
   <!-- Fast Non-blocking Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -452,6 +452,13 @@
           <div class="form-group hidden" id="monthlyDateGroup">
             <label for="taskMonthDate">วันที่ในเดือน (1 - 31)</label>
             <input type="number" id="taskMonthDate" class="pixel-input" min="1" max="31" value="15">
+          </div>
+
+          <!-- One-time Date Selection -->
+          <div class="form-group hidden" id="oneTimeDateGroup">
+            <label for="taskOneTimeDate">วันที่ต้องการแจ้งเตือน</label>
+            <input type="date" id="taskOneTimeDate" class="pixel-input">
+            <div class="text-xs text-muted margin-top-xs">แจ้งเตือนครั้งเดียวในวันที่เลือก แล้วจะไม่วนซ้ำ</div>
           </div>
 
           <div class="form-group">
