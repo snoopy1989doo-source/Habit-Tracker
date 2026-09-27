@@ -44,6 +44,7 @@ window.StorageBridge = (function () {
       { id: 'rew-seed-1', name: 'ดื่มชานมมุก 🧋', cost: 100, icon: '🧋' },
       { id: 'rew-seed-2', name: 'ดูซีรีส์ 1 ตอน 🍿', cost: 150, icon: '🍿' }
     ],
+    goals: [],
     redeemHistory: [],
     pointsBalance: 50,
     focusHistory: [],
@@ -122,6 +123,7 @@ window.StorageBridge = (function () {
         tasks: Array.isArray(parsed.tasks) ? parsed.tasks : defaultData.tasks,
         categories: Array.isArray(parsed.categories) ? parsed.categories : defaultData.categories,
         rewards: Array.isArray(parsed.rewards) ? parsed.rewards : defaultData.rewards,
+        goals: Array.isArray(parsed.goals) ? parsed.goals : [],
         redeemHistory: Array.isArray(parsed.redeemHistory) ? parsed.redeemHistory : [],
         pointsBalance: typeof parsed.pointsBalance === 'number' ? parsed.pointsBalance : 0,
         focusHistory: Array.isArray(parsed.focusHistory) ? parsed.focusHistory : [],

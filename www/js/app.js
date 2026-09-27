@@ -365,6 +365,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateFocusDisplay();
     } else if (activeTab === 'tabGarden') {
       renderGardenTab();
+    } else if (activeTab === 'tabGoals') {
+      renderGoals();
     } else if (activeTab === 'tabRewards') {
       renderRewards();
     } else if (activeTab === 'tabSettings') {
@@ -1526,6 +1528,161 @@ document.addEventListener('DOMContentLoaded', async () => {
       renderRewards();
     });
   }
+
+  // ==========================================================================
+  // GOALS & PLANS
+  // ==========================================================================
+
+  const goalModal = document.getElementById('goalModal');
+  const goalForm = document.getElementById('goalForm');
+  const addGoalBtn = document.getElementById('addGoalBtn');
+  const closeGoalModalBtn = document.getElementById('closeGoalModalBtn');
+  const cancelGoalBtn = document.getElementById('cancelGoalBtn');
+  const deleteGoalBtn = document.getElementById('deleteGoalBtn');
+  const goalKind = document.getElementById('goalKind');
+  const goalNumbersGroup = document.getElementById('goalNumbersGroup');
+
+  function formatGoalNumber(value) {
+    return new Intl.NumberFormat('th-TH', { maximumFractionDigits: 2 }).format(Number(value) || 0);
+  }
+
+  function isGoalComplete(goal) {
+    if (goal.kind === 'milestone') return !!goal.completed;
+    return Number(goal.currentValue || 0) >= Number(goal.targetValue || 0) && Number(goal.targetValue || 0) > 0;
+  }
+
+  function formatGoalYear(year) {
+    const numericYear = Number(year) || new Date().getFullYear();
+    return `${numericYear + 543}`;
+  }
+
+  function toggleGoalNumbers() {
+    if (!goalKind || !goalNumbersGroup) return;
+    goalNumbersGroup.classList.toggle('hidden', goalKind.value === 'milestone');
+  }
+
+  function renderGoals() {
+    const list = document.getElementById('goalsList');
+    const emptyState = document.getElementById('emptyGoalsState');
+    const activeCount = document.getElementById('activeGoalsCount');
+    const completedCount = document.getElementById('completedGoalsCount');
+    if (!list) return;
+
+    const goals = (db.goals || []).slice().sort((a, b) => {
+      const aDone = isGoalComplete(a) ? 1 : 0;
+      const bDone = isGoalComplete(b) ? 1 : 0;
+      return aDone - bDone || Number(a.year || 0) - Number(b.year || 0);
+    });
+    const completed = goals.filter(isGoalComplete).length;
+    if (activeCount) activeCount.textContent = goals.length - completed;
+    if (completedCount) completedCount.textContent = completed;
+
+    if (!goals.length) {
+      list.innerHTML = '';
+      if (emptyState) emptyState.classList.remove('hidden');
+      return;
+    }
+    if (emptyState) emptyState.classList.add('hidden');
+
+    list.innerHTML = goals.map(goal => {
+      const completedGoal = isGoalComplete(goal);
+      const kind = goal.kind || 'numeric';
+      const target = Number(goal.targetValue || 0);
+      const current = Number(goal.currentValue || 0);
+      const progress = kind === 'milestone' ? (completedGoal ? 100 : 0) : Math.max(0, Math.min(100, target > 0 ? (current / target) * 100 : 0));
+      const unit = escapeHtml(goal.unit || '');
+      const progressText = kind === 'milestone'
+        ? (completedGoal ? 'สำเร็จแล้ว ✨' : 'กำลังลงมือทำ')
+        : `${formatGoalNumber(current)} / ${formatGoalNumber(target)} ${unit}`;
+      return `
+        <article class="goal-card pixel-box-sm ${completedGoal ? 'completed' : ''}" data-goal-id="${goal.id}">
+          <div class="goal-card-top">
+            <div class="goal-title">${completedGoal ? '✅ ' : '🎯 '}${escapeHtml(goal.title)}</div>
+            <span class="goal-year">ปี ${formatGoalYear(goal.year)}</span>
+          </div>
+          ${goal.note ? `<div class="goal-note">${escapeHtml(goal.note)}</div>` : ''}
+          <div class="goal-progress-line"><span>${progressText}</span><strong>${Math.round(progress)}%</strong></div>
+          <div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${progress}%"></div></div>
+          <div class="goal-card-actions">
+            ${kind === 'milestone' ? `<button class="pixel-btn ${completedGoal ? 'btn-secondary' : 'btn-success'}" data-action="toggle-goal">${completedGoal ? '↩ ทำอีกครั้ง' : '✅ ทำสำเร็จแล้ว'}</button>` : ''}
+            <button class="pixel-btn btn-secondary" data-action="edit-goal">✏️ ${kind === 'numeric' ? 'อัปเดต' : 'แก้ไข'}</button>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    list.querySelectorAll('[data-action="edit-goal"]').forEach(button => button.addEventListener('click', () => {
+      openGoalModal(button.closest('[data-goal-id]').dataset.goalId);
+    }));
+    list.querySelectorAll('[data-action="toggle-goal"]').forEach(button => button.addEventListener('click', async () => {
+      const goal = (db.goals || []).find(item => item.id === button.closest('[data-goal-id]').dataset.goalId);
+      if (!goal) return;
+      goal.completed = !goal.completed;
+      goal.completedAt = goal.completed ? new Date().toISOString() : null;
+      await saveData();
+      renderGoals();
+      showToast(goal.completed ? 'เป้าหมายสำเร็จแล้ว! 🎉' : 'เปิดเป้าหมายอีกครั้งแล้ว', goal.completed ? '🏆' : '🎯');
+    }));
+  }
+
+  function openGoalModal(goalId) {
+    const goal = goalId ? (db.goals || []).find(item => item.id === goalId) : null;
+    document.getElementById('goalId').value = goal ? goal.id : '';
+    document.getElementById('goalTitle').value = goal ? goal.title : '';
+    document.getElementById('goalYear').value = goal ? goal.year : new Date().getFullYear();
+    document.getElementById('goalKind').value = goal ? (goal.kind || 'numeric') : 'numeric';
+    document.getElementById('goalCurrentValue').value = goal ? (goal.currentValue || 0) : 0;
+    document.getElementById('goalTargetValue').value = goal ? (goal.targetValue || 1) : 10000;
+    document.getElementById('goalUnit').value = goal ? (goal.unit || '') : 'บาท';
+    document.getElementById('goalNote').value = goal ? (goal.note || '') : '';
+    document.getElementById('goalModalTitle').textContent = goal ? 'แก้ไขเป้าหมาย' : 'เพิ่มเป้าหมายใหม่';
+    if (deleteGoalBtn) deleteGoalBtn.classList.toggle('hidden', !goal);
+    toggleGoalNumbers();
+    goalModal.classList.remove('hidden');
+  }
+
+  if (addGoalBtn) addGoalBtn.addEventListener('click', () => openGoalModal());
+  if (closeGoalModalBtn) closeGoalModalBtn.addEventListener('click', () => goalModal.classList.add('hidden'));
+  if (cancelGoalBtn) cancelGoalBtn.addEventListener('click', () => goalModal.classList.add('hidden'));
+  if (goalKind) goalKind.addEventListener('change', toggleGoalNumbers);
+
+  if (goalForm) goalForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const id = document.getElementById('goalId').value;
+    const kind = document.getElementById('goalKind').value;
+    const goalData = {
+      title: document.getElementById('goalTitle').value.trim(),
+      year: Number(document.getElementById('goalYear').value) || new Date().getFullYear(),
+      kind,
+      currentValue: kind === 'numeric' ? Math.max(0, Number(document.getElementById('goalCurrentValue').value) || 0) : 0,
+      targetValue: kind === 'numeric' ? Math.max(0.01, Number(document.getElementById('goalTargetValue').value) || 1) : 1,
+      unit: kind === 'numeric' ? document.getElementById('goalUnit').value.trim() : '',
+      note: document.getElementById('goalNote').value.trim()
+    };
+    if (!db.goals) db.goals = [];
+    if (id) {
+      const goal = db.goals.find(item => item.id === id);
+      if (goal) Object.assign(goal, goalData, { completed: kind === 'numeric' ? undefined : !!goal.completed });
+    } else {
+      db.goals.push({ id: `goal-${Date.now()}`, ...goalData, completed: false, createdAt: new Date().toISOString(), completedAt: null });
+    }
+    await saveData();
+    goalModal.classList.add('hidden');
+    renderGoals();
+    showToast(id ? 'บันทึกความคืบหน้าแล้ว' : 'เพิ่มเป้าหมายใหม่แล้ว', '🎯');
+  });
+
+  if (deleteGoalBtn) deleteGoalBtn.addEventListener('click', () => {
+    const id = document.getElementById('goalId').value;
+    if (!id) return;
+    showPixelConfirm('ลบเป้าหมาย', 'ต้องการลบเป้าหมายนี้ใช่ไหม?', async () => {
+      db.goals = (db.goals || []).filter(goal => goal.id !== id);
+      await saveData();
+      goalModal.classList.add('hidden');
+      renderGoals();
+      showToast('ลบเป้าหมายแล้ว', '🗑️');
+    });
+  });
 
   // Reward Modal Handlers
   const addRewardBtn = document.getElementById('addRewardBtn');

@@ -250,6 +250,35 @@
         </div>
       </section>
 
+      <!-- TAB 4: PERSONAL GOALS -->
+      <section id="tabGoals" class="tab-page">
+        <div class="goals-header pixel-box">
+          <div>
+            <h2 class="pixel-text-gold">🎯 GOALS & PLANS</h2>
+            <p>เป้าหมายที่คุณตั้งใจทำให้สำเร็จในปีนี้</p>
+          </div>
+          <button class="pixel-btn btn-primary text-btn-sm" id="addGoalBtn">+ เป้าหมาย</button>
+        </div>
+
+        <div class="goals-stats-grid">
+          <div class="stat-card pixel-box-sm">
+            <div class="stat-num font-pixel" id="activeGoalsCount">0</div>
+            <div class="stat-lbl">เป้าหมายที่กำลังเดิน</div>
+          </div>
+          <div class="stat-card pixel-box-sm">
+            <div class="stat-num font-pixel" id="completedGoalsCount">0</div>
+            <div class="stat-lbl">ทำสำเร็จแล้ว</div>
+          </div>
+        </div>
+
+        <div class="goals-list" id="goalsList"></div>
+        <div class="empty-state hidden" id="emptyGoalsState">
+          <div class="pixel-icon-large">🎯</div>
+          <h3>เริ่มวางแผนปีนี้ของคุณ</h3>
+          <p>เพิ่มเป้าหมายเงินเก็บ ผลตอบแทน หรือเป้าหมายชีวิตที่อยากทำให้สำเร็จ</p>
+        </div>
+      </section>
+
       <!-- TAB 4: REWARDS SHOP -->
       <section id="tabRewards" class="tab-page">
         <div class="shop-header pixel-box">
@@ -358,6 +387,10 @@
         <span class="nav-icon">🏡</span>
         <span class="nav-label">Garden</span>
       </button>
+      <button class="nav-item" data-tab="tabGoals">
+        <span class="nav-icon">🎯</span>
+        <span class="nav-label">Goals</span>
+      </button>
       <button class="nav-item" data-tab="tabRewards">
         <span class="nav-icon">🏆</span>
         <span class="nav-label">Shop</span>
@@ -367,6 +400,59 @@
         <span class="nav-label">Settings</span>
       </button>
     </nav>
+
+    <!-- MODAL: ADD/EDIT GOAL -->
+    <div class="pixel-modal-backdrop hidden" id="goalModal">
+      <div class="pixel-modal">
+        <div class="modal-header">
+          <h3 class="font-pixel" id="goalModalTitle">เพิ่มเป้าหมายใหม่</h3>
+          <button class="modal-close" id="closeGoalModalBtn">×</button>
+        </div>
+        <form id="goalForm" class="modal-body">
+          <input type="hidden" id="goalId">
+          <div class="form-group">
+            <label for="goalTitle">เป้าหมาย *</label>
+            <input type="text" id="goalTitle" class="pixel-input" placeholder="เช่น มีเงินเก็บ 10,000 บาท" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="goalYear">ปีเป้าหมาย</label>
+              <input type="number" id="goalYear" class="pixel-input" min="2000" max="2200">
+            </div>
+            <div class="form-group flex-1">
+              <label for="goalKind">รูปแบบ</label>
+              <select id="goalKind" class="pixel-input">
+                <option value="numeric">ติดตามตัวเลข</option>
+                <option value="milestone">ทำให้สำเร็จ</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row" id="goalNumbersGroup">
+            <div class="form-group flex-1">
+              <label for="goalCurrentValue">ทำได้แล้ว</label>
+              <input type="number" id="goalCurrentValue" class="pixel-input" min="0" step="any" value="0">
+            </div>
+            <div class="form-group flex-1">
+              <label for="goalTargetValue">เป้าหมาย</label>
+              <input type="number" id="goalTargetValue" class="pixel-input" min="0.01" step="any" value="10000">
+            </div>
+            <div class="form-group width-100">
+              <label for="goalUnit">หน่วย</label>
+              <input type="text" id="goalUnit" class="pixel-input" value="บาท" maxlength="12">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="goalNote">แผนหรือเหตุผล (Optional)</label>
+            <textarea id="goalNote" class="pixel-input" rows="3" placeholder="เช่น แบ่งเก็บเดือนละ 1,000 บาท" style="resize: vertical; font-family: var(--font-ui);"></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="pixel-btn btn-danger hidden" id="deleteGoalBtn">ลบ</button>
+            <button type="button" class="pixel-btn btn-secondary" id="cancelGoalBtn">ยกเลิก</button>
+            <button type="submit" class="pixel-btn btn-primary font-pixel">บันทึกเป้าหมาย</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <!-- MODAL: ADD/EDIT TASK -->
     <div class="pixel-modal-backdrop hidden" id="taskModal">

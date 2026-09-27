@@ -1276,6 +1276,53 @@ html, body {
   gap: 8px;
 }
 
+/* ===========================================================================
+   TAB: GOALS & PLANS
+   ========================================================================== */
+
+.goals-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.goals-header h2 { margin: 0 0 5px; }
+.goals-header p { margin: 0; color: var(--text-muted); font-size: .8rem; }
+
+.goals-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.goals-list { display: flex; flex-direction: column; gap: 10px; }
+
+.goal-card {
+  padding: 12px;
+  border-left: 4px solid var(--mana-cyan);
+  background: linear-gradient(135deg, var(--bg-card) 0%, #18243a 100%);
+}
+
+.goal-card.completed { border-left-color: var(--emerald-check); }
+.goal-card.completed .goal-title { color: var(--emerald-check); }
+
+.goal-card-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.goal-title { font-weight: 700; font-size: 1rem; }
+.goal-year { color: var(--flame-gold); font-size: .72rem; white-space: nowrap; }
+.goal-note { color: var(--text-muted); font-size: .78rem; margin: 7px 0 9px; white-space: pre-line; }
+.goal-progress-line { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 5px; color: var(--text-muted); font-size: .75rem; }
+.goal-progress-line strong { color: var(--text-primary); }
+.goal-progress-bar { height: 11px; border: 2px solid #2b364e; background: #0e1420; overflow: hidden; }
+.goal-progress-fill { height: 100%; background: linear-gradient(90deg, var(--mana-cyan), var(--emerald-check)); transition: width .2s ease; }
+.goal-card-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 10px; }
+.goal-card-actions .pixel-btn { padding: 6px 8px; font-size: .72rem; }
+
+#goalNumbersGroup.hidden { display: none; }
+
 /* ==========================================================================
    BOTTOM NAVIGATION BAR
    ========================================================================== */
