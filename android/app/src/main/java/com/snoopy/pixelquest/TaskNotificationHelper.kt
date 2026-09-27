@@ -11,6 +11,7 @@ import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -140,12 +141,35 @@ object TaskNotificationHelper {
         notificationManager.cancel(taskId.hashCode())
     }
 
+    fun postGoalReminder(context: Context, goalId: String, title: String, deadlineDate: String) {
+        createNotificationChannel(context)
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationId = goalId.hashCode() xor 0x474f414c
+        val appIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val appPendingIntent = PendingIntent.getActivity(
+            context, notificationId, appIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("🎯 ใกล้ถึงเป้าหมาย: $title")
+            .setContentText("เหลือ 3 วันก่อนถึงกำหนด $deadlineDate")
+            .setStyle(NotificationCompat.BigTextStyle().bigText("เหลือ 3 วันก่อนถึงกำหนด $deadlineDate\nเปิด Pixel Quest เพื่อติดตามความคืบหน้า"))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setContentIntent(appPendingIntent)
+        notificationManager.notify(notificationId, builder.build())
+    }
+
     fun rescheduleAll(context: Context) {
         try {
             val prefs = context.getSharedPreferences("PixelQuestData", Context.MODE_PRIVATE)
             val jsonString = prefs.getString("pixel_quest_data", null) ?: return
             val rootObj = JSONObject(jsonString)
-            val tasksArray = rootObj.optJSONArray("tasks") ?: return
+            val tasksArray = rootObj.optJSONArray("tasks") ?: JSONArray()
 
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
             val sdfKey = SimpleDateFormat("yyyy-MM-dd", Locale.US)
@@ -224,9 +248,62 @@ object TaskNotificationHelper {
                     }
                 }
             }
+            scheduleGoalReminders(context, rootObj.optJSONArray("goals") ?: JSONArray(), alarmManager, nowMillis)
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    private fun scheduleGoalReminders(context: Context, goals: JSONArray, alarmManager: AlarmManager, nowMillis: Long) {
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        for (i in 0 until goals.length()) {
+            val goal = goals.optJSONObject(i) ?: continue
+            if (isGoalComplete(goal)) continue
+            val goalId = goal.optString("id", "")
+            val deadlineDate = goal.optString("deadlineDate", "")
+            if (goalId.isBlank() || deadlineDate.isBlank()) continue
+            try {
+                val deadline = dateFormat.parse(deadlineDate) ?: continue
+                val reminderTime = goal.optString("reminderTime", "09:00").split(":")
+                val hour = reminderTime.getOrNull(0)?.toIntOrNull() ?: 9
+                val minute = reminderTime.getOrNull(1)?.toIntOrNull() ?: 0
+                val reminderCal = Calendar.getInstance().apply {
+                    time = deadline
+                    add(Calendar.DAY_OF_YEAR, -3)
+                    set(Calendar.HOUR_OF_DAY, hour)
+                    set(Calendar.MINUTE, minute)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                if (reminderCal.timeInMillis <= nowMillis) continue
+                val alarmIntent = Intent(context, TaskNotificationReceiver::class.java).apply {
+                    action = TaskNotificationReceiver.ACTION_SHOW_GOAL_REMINDER
+                    putExtra(TaskNotificationReceiver.EXTRA_GOAL_ID, goalId)
+                    data = Uri.parse("pixelquest://goal/alarm/$goalId")
+                }
+                val pendingIntent = PendingIntent.getBroadcast(
+                    context, goalId.hashCode() xor 0x474f414c, alarmIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                )
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminderCal.timeInMillis, pendingIntent)
+                    } else {
+                        alarmManager.setExact(AlarmManager.RTC_WAKEUP, reminderCal.timeInMillis, pendingIntent)
+                    }
+                } catch (_: SecurityException) {
+                    alarmManager.set(AlarmManager.RTC_WAKEUP, reminderCal.timeInMillis, pendingIntent)
+                }
+            } catch (_: Exception) {
+                // Ignore an invalid legacy date and keep scheduling other goals.
+            }
+        }
+    }
+
+    private fun isGoalComplete(goal: JSONObject): Boolean {
+        if (goal.optString("kind", "numeric") == "milestone") return goal.optBoolean("completed", false)
+        val target = goal.optDouble("targetValue", 0.0)
+        return target > 0 && goal.optDouble("currentValue", 0.0) >= target
     }
 
     private fun getNextDueCalendar(

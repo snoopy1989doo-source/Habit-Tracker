@@ -62,6 +62,7 @@
             <intent-filter>
                 <action android:name="com.snoopy.pixelquest.ACTION_COMPLETE_TASK" />
                 <action android:name="com.snoopy.pixelquest.ACTION_SHOW_REMINDER" />
+                <action android:name="com.snoopy.pixelquest.ACTION_SHOW_GOAL_REMINDER" />
                 <action android:name="com.snoopy.pixelquest.ACTION_FOCUS_PAUSE" />
                 <action android:name="com.snoopy.pixelquest.ACTION_FOCUS_RESUME" />
                 <action android:name="com.snoopy.pixelquest.ACTION_FOCUS_GIVEUP" />

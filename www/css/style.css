@@ -1321,7 +1321,35 @@ html, body {
 .goal-card-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 10px; }
 .goal-card-actions .pixel-btn { padding: 6px 8px; font-size: .72rem; }
 
+/* Keep every goal field inside the modal on narrow phone screens. */
+#goalNumbersGroup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+#goalNumbersGroup .goal-unit-field { grid-column: 1 / -1; }
+.goal-deadline-row { align-items: flex-end; }
+.goal-reminder-field { width: 128px; }
+.goal-countdown {
+  display: inline-block;
+  margin: 8px 0 2px;
+  padding: 5px 7px;
+  border: 1px solid #375075;
+  color: var(--mana-cyan);
+  background: rgba(24, 52, 82, .35);
+  font-size: .72rem;
+}
+.goal-countdown.urgent { border-color: var(--flame-gold); color: var(--flame-gold); }
+.goal-countdown.overdue { border-color: #df5b61; color: #ff9292; }
+.goal-points { color: var(--flame-gold); font-size: .72rem; white-space: nowrap; }
+
 #goalNumbersGroup.hidden { display: none; }
+
+@media (max-width: 380px) {
+  .goal-deadline-row { flex-direction: column; align-items: stretch; }
+  .goal-reminder-field { width: auto; }
+  .nav-item { padding-left: 7px; padding-right: 7px; }
+}
 
 /* ==========================================================================
    BOTTOM NAVIGATION BAR

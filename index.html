@@ -436,10 +436,25 @@
               <label for="goalTargetValue">เป้าหมาย</label>
               <input type="number" id="goalTargetValue" class="pixel-input" min="0.01" step="any" value="10000">
             </div>
-            <div class="form-group width-100">
+            <div class="form-group goal-unit-field">
               <label for="goalUnit">หน่วย</label>
               <input type="text" id="goalUnit" class="pixel-input" value="บาท" maxlength="12">
             </div>
+          </div>
+          <div class="form-row goal-deadline-row">
+            <div class="form-group flex-1">
+              <label for="goalDeadline">วันครบกำหนด (Optional)</label>
+              <input type="date" id="goalDeadline" class="pixel-input">
+            </div>
+            <div class="form-group goal-reminder-field">
+              <label for="goalReminderTime">เตือนก่อน 3 วัน</label>
+              <input type="time" id="goalReminderTime" class="pixel-input" value="09:00">
+            </div>
+          </div>
+          <div class="text-xs text-muted">เมื่อเลือกวันครบกำหนด ระบบจะแสดงเวลานับถอยหลัง และแจ้งเตือนล่วงหน้า 3 วัน</div>
+          <div class="form-group">
+            <label for="goalPoints">คะแนนเมื่อสำเร็จ</label>
+            <input type="number" id="goalPoints" class="pixel-input" min="0" max="100000" value="50">
           </div>
           <div class="form-group">
             <label for="goalNote">แผนหรือเหตุผล (Optional)</label>

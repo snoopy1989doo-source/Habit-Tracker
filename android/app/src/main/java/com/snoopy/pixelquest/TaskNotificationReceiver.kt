@@ -17,12 +17,14 @@ class TaskNotificationReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_COMPLETE_TASK = "com.snoopy.pixelquest.ACTION_COMPLETE_TASK"
         const val ACTION_SHOW_REMINDER = "com.snoopy.pixelquest.ACTION_SHOW_REMINDER"
+        const val ACTION_SHOW_GOAL_REMINDER = "com.snoopy.pixelquest.ACTION_SHOW_GOAL_REMINDER"
         const val ACTION_FOCUS_PAUSE = "com.snoopy.pixelquest.ACTION_FOCUS_PAUSE"
         const val ACTION_FOCUS_RESUME = "com.snoopy.pixelquest.ACTION_FOCUS_RESUME"
         const val ACTION_FOCUS_GIVEUP = "com.snoopy.pixelquest.ACTION_FOCUS_GIVEUP"
         const val ACTION_FOCUS_EXPIRED = "com.snoopy.pixelquest.ACTION_FOCUS_EXPIRED"
 
         const val EXTRA_TASK_ID = "extra_task_id"
+        const val EXTRA_GOAL_ID = "extra_goal_id"
         const val EXTRA_DATE_KEY = "extra_date_key"
         const val EXTRA_NOTIF_ID = "extra_notif_id"
         const val EXTRA_FOCUS_MINS = "extra_focus_mins"
@@ -37,6 +39,9 @@ class TaskNotificationReceiver : BroadcastReceiver() {
             }
             ACTION_SHOW_REMINDER -> {
                 handleShowReminder(context, intent)
+            }
+            ACTION_SHOW_GOAL_REMINDER -> {
+                handleShowGoalReminder(context, intent)
             }
             ACTION_FOCUS_PAUSE -> {
                 handleFocusPause(context)
@@ -147,6 +152,32 @@ class TaskNotificationReceiver : BroadcastReceiver() {
             }
 
             TaskNotificationHelper.rescheduleAll(context)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun handleShowGoalReminder(context: Context, intent: Intent) {
+        val goalId = intent.getStringExtra(EXTRA_GOAL_ID) ?: return
+        try {
+            val prefs = context.getSharedPreferences("PixelQuestData", Context.MODE_PRIVATE)
+            val jsonString = prefs.getString("pixel_quest_data", null) ?: return
+            val goals = JSONObject(jsonString).optJSONArray("goals") ?: return
+            for (i in 0 until goals.length()) {
+                val goal = goals.optJSONObject(i) ?: continue
+                val completed = if (goal.optString("kind", "numeric") == "milestone") {
+                    goal.optBoolean("completed", false)
+                } else {
+                    val target = goal.optDouble("targetValue", 0.0)
+                    target > 0 && goal.optDouble("currentValue", 0.0) >= target
+                }
+                if (goal.optString("id") == goalId && !completed) {
+                    val title = goal.optString("title", "เป้าหมาย")
+                    val deadline = goal.optString("deadlineDate", "")
+                    if (deadline.isNotBlank()) TaskNotificationHelper.postGoalReminder(context, goalId, title, deadline)
+                    break
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
         }

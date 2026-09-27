@@ -1556,6 +1556,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     return `${numericYear + 543}`;
   }
 
+  function goalDaysRemaining(goal) {
+    const dateKey = goal.deadlineDate || '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return null;
+    const deadline = new Date(`${dateKey}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.round((deadline.getTime() - today.getTime()) / 86400000);
+  }
+
+  function goalCountdownText(days) {
+    if (days === 0) return 'ครบกำหนดวันนี้';
+    if (days === 1) return 'เหลือ 1 วัน';
+    if (days < 0) return `เลยกำหนด ${Math.abs(days)} วัน`;
+    return `เหลือ ${days} วัน`;
+  }
+
+  function awardGoalPoints(goal) {
+    if (!isGoalComplete(goal) || goal.rewardClaimedAt) return 0;
+    const points = Math.max(0, Math.floor(Number(goal.points) || 0));
+    goal.rewardClaimedAt = new Date().toISOString();
+    if (points) db.pointsBalance = (Number(db.pointsBalance) || 0) + points;
+    return points;
+  }
+
   function toggleGoalNumbers() {
     if (!goalKind || !goalNumbersGroup) return;
     goalNumbersGroup.classList.toggle('hidden', goalKind.value === 'milestone');
@@ -1591,6 +1615,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       const current = Number(goal.currentValue || 0);
       const progress = kind === 'milestone' ? (completedGoal ? 100 : 0) : Math.max(0, Math.min(100, target > 0 ? (current / target) * 100 : 0));
       const unit = escapeHtml(goal.unit || '');
+      const days = goalDaysRemaining(goal);
+      const countdownClass = days !== null && days < 0 ? 'overdue' : (days !== null && days <= 3 ? 'urgent' : '');
+      const countdown = days === null ? '' : `<div class="goal-countdown ${countdownClass}">⏳ ${goalCountdownText(days)} · ${escapeHtml(goal.deadlineDate)}</div>`;
+      const points = Math.max(0, Math.floor(Number(goal.points) || 0));
       const progressText = kind === 'milestone'
         ? (completedGoal ? 'สำเร็จแล้ว ✨' : 'กำลังลงมือทำ')
         : `${formatGoalNumber(current)} / ${formatGoalNumber(target)} ${unit}`;
@@ -1598,9 +1626,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         <article class="goal-card pixel-box-sm ${completedGoal ? 'completed' : ''}" data-goal-id="${goal.id}">
           <div class="goal-card-top">
             <div class="goal-title">${completedGoal ? '✅ ' : '🎯 '}${escapeHtml(goal.title)}</div>
-            <span class="goal-year">ปี ${formatGoalYear(goal.year)}</span>
+            <span class="goal-year">ปี ${formatGoalYear(goal.year)}${points ? ` · <span class="goal-points">+${points} 🪙</span>` : ''}</span>
           </div>
           ${goal.note ? `<div class="goal-note">${escapeHtml(goal.note)}</div>` : ''}
+          ${countdown}
           <div class="goal-progress-line"><span>${progressText}</span><strong>${Math.round(progress)}%</strong></div>
           <div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${progress}%"></div></div>
           <div class="goal-card-actions">
@@ -1619,9 +1648,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!goal) return;
       goal.completed = !goal.completed;
       goal.completedAt = goal.completed ? new Date().toISOString() : null;
+      const pointsAwarded = goal.completed ? awardGoalPoints(goal) : 0;
       await saveData();
       renderGoals();
-      showToast(goal.completed ? 'เป้าหมายสำเร็จแล้ว! 🎉' : 'เปิดเป้าหมายอีกครั้งแล้ว', goal.completed ? '🏆' : '🎯');
+      showToast(goal.completed ? `เป้าหมายสำเร็จแล้ว!${pointsAwarded ? ` +${pointsAwarded} 🪙` : ''}` : 'เปิดเป้าหมายอีกครั้งแล้ว', goal.completed ? '🏆' : '🎯');
     }));
   }
 
@@ -1634,6 +1664,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('goalCurrentValue').value = goal ? (goal.currentValue || 0) : 0;
     document.getElementById('goalTargetValue').value = goal ? (goal.targetValue || 1) : 10000;
     document.getElementById('goalUnit').value = goal ? (goal.unit || '') : 'บาท';
+    document.getElementById('goalDeadline').value = goal ? (goal.deadlineDate || '') : '';
+    document.getElementById('goalReminderTime').value = goal ? (goal.reminderTime || '09:00') : '09:00';
+    document.getElementById('goalPoints').value = goal ? (goal.points || 0) : 50;
     document.getElementById('goalNote').value = goal ? (goal.note || '') : '';
     document.getElementById('goalModalTitle').textContent = goal ? 'แก้ไขเป้าหมาย' : 'เพิ่มเป้าหมายใหม่';
     if (deleteGoalBtn) deleteGoalBtn.classList.toggle('hidden', !goal);
@@ -1657,19 +1690,29 @@ document.addEventListener('DOMContentLoaded', async () => {
       currentValue: kind === 'numeric' ? Math.max(0, Number(document.getElementById('goalCurrentValue').value) || 0) : 0,
       targetValue: kind === 'numeric' ? Math.max(0.01, Number(document.getElementById('goalTargetValue').value) || 1) : 1,
       unit: kind === 'numeric' ? document.getElementById('goalUnit').value.trim() : '',
+      deadlineDate: document.getElementById('goalDeadline').value || null,
+      reminderTime: document.getElementById('goalReminderTime').value || '09:00',
+      points: Math.max(0, Math.floor(Number(document.getElementById('goalPoints').value) || 0)),
       note: document.getElementById('goalNote').value.trim()
     };
     if (!db.goals) db.goals = [];
+    let savedGoal;
     if (id) {
       const goal = db.goals.find(item => item.id === id);
-      if (goal) Object.assign(goal, goalData, { completed: kind === 'numeric' ? undefined : !!goal.completed });
+      if (goal) {
+        Object.assign(goal, goalData);
+        savedGoal = goal;
+      }
     } else {
-      db.goals.push({ id: `goal-${Date.now()}`, ...goalData, completed: false, createdAt: new Date().toISOString(), completedAt: null });
+      savedGoal = { id: `goal-${Date.now()}`, ...goalData, completed: false, createdAt: new Date().toISOString(), completedAt: null };
+      db.goals.push(savedGoal);
     }
+    const pointsAwarded = savedGoal ? awardGoalPoints(savedGoal) : 0;
+    if (savedGoal && isGoalComplete(savedGoal) && !savedGoal.completedAt) savedGoal.completedAt = new Date().toISOString();
     await saveData();
     goalModal.classList.add('hidden');
     renderGoals();
-    showToast(id ? 'บันทึกความคืบหน้าแล้ว' : 'เพิ่มเป้าหมายใหม่แล้ว', '🎯');
+    showToast(`${id ? 'บันทึกความคืบหน้าแล้ว' : 'เพิ่มเป้าหมายใหม่แล้ว'}${pointsAwarded ? ` +${pointsAwarded} 🪙` : ''}`, pointsAwarded ? '🏆' : '🎯');
   });
 
   if (deleteGoalBtn) deleteGoalBtn.addEventListener('click', () => {
